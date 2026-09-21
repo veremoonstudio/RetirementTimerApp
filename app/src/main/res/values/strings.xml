@@ -1,3 +1,17 @@
 <resources>
-    <string name="app_name">RetirementTimerApp</string>
+    <string name="app_name">Retirement Timer</string>
+    <string name="work_time">Work Time</string>
+    <string name="premium">Premium</string>
+    <string name="background">Background</string>
+    <string name="retirement_date">RETIREMENT DATE</string>
+    <string name="work_time_left">Work Time Left</string>
+    <string name="total_time_left">Total Time Left</string>
+    <string name="days">DAYS</string>
+    <string name="hrs">HRS</string>
+    <string name="min">MIN</string>
+    <string name="sec">SEC</string>
+    <string name="advertisement">ADVERTISEMENT</string>
+    <string name="select_date">Select Date</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
 </resources>
