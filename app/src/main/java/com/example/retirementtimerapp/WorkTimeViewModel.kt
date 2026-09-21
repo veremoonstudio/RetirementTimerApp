@@ -1,6 +1,11 @@
 package com.example.retirementtimerapp
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Context
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -12,12 +17,32 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.util.Locale
 
-class WorkTimeViewModel : ViewModel() {
+private val Context.dataStore by preferencesDataStore(name = "work_time_settings")
+
+class WorkTimeViewModel(application: Application) : AndroidViewModel(application) {
+    private val RETIREMENT_DATE_KEY = longPreferencesKey("retirement_date")
+    
     private val _uiState = MutableStateFlow(WorkTimeUiState())
     val uiState: StateFlow<WorkTimeUiState> = _uiState.asStateFlow()
 
     init {
+        loadSettings()
         startTimer()
+    }
+
+    private fun loadSettings() {
+        viewModelScope.launch {
+            val savedDateEpoch = getApplication<Application>().dataStore.data
+                .map { preferences -> preferences[RETIREMENT_DATE_KEY] }
+                .firstOrNull()
+            
+            if (savedDateEpoch != null) {
+                _uiState.update { it.copy(retirementDate = LocalDate.ofEpochDay(savedDateEpoch)) }
+            } else {
+                // If no date saved, use today (already default in WorkTimeUiState)
+                _uiState.update { it.copy(retirementDate = LocalDate.now()) }
+            }
+        }
     }
 
     fun toggleMode(isWorkTime: Boolean) {
@@ -26,6 +51,15 @@ class WorkTimeViewModel : ViewModel() {
 
     fun updateRetirementDate(date: LocalDate) {
         _uiState.update { it.copy(retirementDate = date) }
+        saveSettings(date)
+    }
+
+    private fun saveSettings(date: LocalDate) {
+        viewModelScope.launch {
+            getApplication<Application>().dataStore.edit { preferences ->
+                preferences[RETIREMENT_DATE_KEY] = date.toEpochDay()
+            }
+        }
     }
 
     private fun startTimer() {
@@ -49,7 +83,6 @@ class WorkTimeViewModel : ViewModel() {
     }
 
     private fun calculateTotalTime(now: LocalDateTime, retirementDate: LocalDate): TimeLeftData {
-        // Считаем до конца дня выхода на пенсию (чтобы день был включен полностью)
         val target = retirementDate.atTime(LocalTime.MAX)
         if (now.isAfter(target)) return TimeLeftData("00", "00", "00", "00")
 
@@ -70,11 +103,10 @@ class WorkTimeViewModel : ViewModel() {
     private fun calculateWorkTime(now: LocalDateTime, retirementDate: LocalDate): TimeLeftData {
         val startTime = LocalTime.of(9, 0)
         val endTime = LocalTime.of(18, 0)
-        val workSecondsPerDay = 9 * 3600L // 9 часов в день
+        val workSecondsPerDay = 9 * 3600L
 
         val today = now.toLocalDate()
 
-        // 1. Считаем полные будущие рабочие дни (завтра до самого дня пенсии включительно)
         var futureWorkDays = 0L
         var cursor = today.plusDays(1)
         while (!cursor.isAfter(retirementDate)) {
@@ -82,7 +114,6 @@ class WorkTimeViewModel : ViewModel() {
             cursor = cursor.plusDays(1)
         }
 
-        // 2. Оставшееся время сегодня (если рабочий день)
         var todaySeconds = 0L
         if (isWorkDay(today)) {
             val nowTime = now.toLocalTime()
@@ -92,13 +123,7 @@ class WorkTimeViewModel : ViewModel() {
             }
         }
 
-        // 3. Время в день выхода на пенсию (считаем до времени начала, т.к. пенсия с утра)
-        // В данном случае это 0 секунд, так как работа в этот день не начинается.
-        val retirementDaySeconds = 0L
-
-        val totalWorkSeconds = (futureWorkDays * workSecondsPerDay) + todaySeconds + retirementDaySeconds
-
-        // Делим общие секунды на 9-часовые рабочие дни
+        val totalWorkSeconds = (futureWorkDays * workSecondsPerDay) + todaySeconds
         val days = totalWorkSeconds / workSecondsPerDay
         var remainder = totalWorkSeconds % workSecondsPerDay
         
@@ -116,7 +141,6 @@ class WorkTimeViewModel : ViewModel() {
     }
 
     private fun isWorkDay(date: LocalDate): Boolean {
-        // Стандартная рабочая неделя: Пн-Пт
         return date.dayOfWeek != DayOfWeek.SATURDAY && date.dayOfWeek != DayOfWeek.SUNDAY
     }
 }

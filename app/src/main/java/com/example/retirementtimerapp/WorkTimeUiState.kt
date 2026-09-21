@@ -4,7 +4,7 @@ import java.time.LocalDate
 
 data class WorkTimeUiState(
     val isWorkTimeMode: Boolean = true,
-    val retirementDate: LocalDate = LocalDate.of(2026, 8, 6),
+    val retirementDate: LocalDate = LocalDate.now(),
     val timeLeft: TimeLeftData = TimeLeftData()
 )
 
