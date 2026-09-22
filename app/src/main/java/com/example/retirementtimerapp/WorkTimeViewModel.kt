@@ -4,12 +4,16 @@ import android.app.Application
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDate
@@ -19,8 +23,26 @@ import java.util.Locale
 
 private val Context.dataStore by preferencesDataStore(name = "work_time_settings")
 
+@Serializable
+private data class SettingsData(
+    val retirementDateEpoch: Long,
+    val workDays: List<DayOfWeek>,
+    val startTimeStr: String,
+    val endTimeStr: String,
+    val vacationHours: Int,
+    val holidays: List<SavedHoliday>
+)
+
+@Serializable
+private data class SavedHoliday(
+    val name: String,
+    val month: Int,
+    val day: Int,
+    val isEnabled: Boolean
+)
+
 class WorkTimeViewModel(application: Application) : AndroidViewModel(application) {
-    private val RETIREMENT_DATE_KEY = longPreferencesKey("retirement_date")
+    private val SETTINGS_KEY = stringPreferencesKey("all_settings")
     
     private val _uiState = MutableStateFlow(WorkTimeUiState())
     val uiState: StateFlow<WorkTimeUiState> = _uiState.asStateFlow()
@@ -32,16 +54,27 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
 
     private fun loadSettings() {
         viewModelScope.launch {
-            val savedDateEpoch = getApplication<Application>().dataStore.data
-                .map { preferences -> preferences[RETIREMENT_DATE_KEY] }
-                .firstOrNull()
-            
-            if (savedDateEpoch != null) {
-                _uiState.update { it.copy(retirementDate = LocalDate.ofEpochDay(savedDateEpoch)) }
-            } else {
-                // If no date saved, use today (already default in WorkTimeUiState)
-                _uiState.update { it.copy(retirementDate = LocalDate.now()) }
-            }
+            getApplication<Application>().dataStore.data
+                .map { preferences -> preferences[SETTINGS_KEY] }
+                .collect { json ->
+                    if (json != null) {
+                        try {
+                            val data = Json.decodeFromString<SettingsData>(json)
+                            _uiState.update {
+                                it.copy(
+                                    retirementDate = LocalDate.ofEpochDay(data.retirementDateEpoch),
+                                    workDays = data.workDays.toSet(),
+                                    startTime = LocalTime.parse(data.startTimeStr),
+                                    endTime = LocalTime.parse(data.endTimeStr),
+                                    vacationHours = data.vacationHours,
+                                    holidays = data.holidays.map { h -> Holiday(h.name, h.month, h.day, h.isEnabled) }
+                                )
+                            }
+                        } catch (e: Exception) {
+                            // Keep defaults if error
+                        }
+                    }
+                }
         }
     }
 
@@ -51,13 +84,42 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
 
     fun updateRetirementDate(date: LocalDate) {
         _uiState.update { it.copy(retirementDate = date) }
-        saveSettings(date)
+        saveAllSettings()
     }
 
-    private fun saveSettings(date: LocalDate) {
+    fun updateWorkDays(days: Set<DayOfWeek>) {
+        _uiState.update { it.copy(workDays = days) }
+        saveAllSettings()
+    }
+
+    fun updateTimes(start: LocalTime, end: LocalTime) {
+        _uiState.update { it.copy(startTime = start, endTime = end) }
+        saveAllSettings()
+    }
+
+    fun updateVacationHours(hours: Int) {
+        _uiState.update { it.copy(vacationHours = hours) }
+        saveAllSettings()
+    }
+
+    fun updateHolidays(holidays: List<Holiday>) {
+        _uiState.update { it.copy(holidays = holidays) }
+        saveAllSettings()
+    }
+
+    private fun saveAllSettings() {
+        val state = _uiState.value
+        val data = SettingsData(
+            retirementDateEpoch = state.retirementDate.toEpochDay(),
+            workDays = state.workDays.toList(),
+            startTimeStr = state.startTime.toString(),
+            endTimeStr = state.endTime.toString(),
+            vacationHours = state.vacationHours,
+            holidays = state.holidays.map { h -> SavedHoliday(h.name, h.month, h.day, h.isEnabled) }
+        )
         viewModelScope.launch {
             getApplication<Application>().dataStore.edit { preferences ->
-                preferences[RETIREMENT_DATE_KEY] = date.toEpochDay()
+                preferences[SETTINGS_KEY] = Json.encodeToString(data)
             }
         }
     }
@@ -76,7 +138,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         val now = LocalDateTime.now()
 
         if (state.isWorkTimeMode) {
-            _uiState.update { it.copy(timeLeft = calculateWorkTime(now, state.retirementDate)) }
+            _uiState.update { it.copy(timeLeft = calculateWorkTime(now, state.retirementDate, state)) }
         } else {
             _uiState.update { it.copy(timeLeft = calculateTotalTime(now, state.retirementDate)) }
         }
@@ -100,22 +162,22 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         )
     }
 
-    private fun calculateWorkTime(now: LocalDateTime, retirementDate: LocalDate): TimeLeftData {
-        val startTime = LocalTime.of(9, 0)
-        val endTime = LocalTime.of(18, 0)
-        val workSecondsPerDay = 9 * 3600L
+    private fun calculateWorkTime(now: LocalDateTime, retirementDate: LocalDate, state: WorkTimeUiState): TimeLeftData {
+        val startTime = state.startTime
+        val endTime = state.endTime
+        val workSecondsPerDay = Duration.between(startTime, endTime).seconds
 
         val today = now.toLocalDate()
 
         var futureWorkDays = 0L
         var cursor = today.plusDays(1)
         while (!cursor.isAfter(retirementDate)) {
-            if (isWorkDay(cursor)) futureWorkDays++
+            if (isWorkDay(cursor, state)) futureWorkDays++
             cursor = cursor.plusDays(1)
         }
 
         var todaySeconds = 0L
-        if (isWorkDay(today)) {
+        if (isWorkDay(today, state)) {
             val nowTime = now.toLocalTime()
             if (nowTime.isBefore(endTime)) {
                 val effectiveStart = if (nowTime.isBefore(startTime)) startTime else nowTime
@@ -123,7 +185,10 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
             }
         }
 
-        val totalWorkSeconds = (futureWorkDays * workSecondsPerDay) + todaySeconds
+        var totalWorkSeconds = (futureWorkDays * workSecondsPerDay) + todaySeconds
+        totalWorkSeconds -= (state.vacationHours * 3600L)
+        if (totalWorkSeconds < 0) totalWorkSeconds = 0
+
         val days = totalWorkSeconds / workSecondsPerDay
         var remainder = totalWorkSeconds % workSecondsPerDay
         
@@ -140,7 +205,9 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         )
     }
 
-    private fun isWorkDay(date: LocalDate): Boolean {
-        return date.dayOfWeek != DayOfWeek.SATURDAY && date.dayOfWeek != DayOfWeek.SUNDAY
+    private fun isWorkDay(date: LocalDate, state: WorkTimeUiState): Boolean {
+        if (date.dayOfWeek !in state.workDays) return false
+        if (state.holidays.any { it.isEnabled && it.month == date.monthValue && it.day == date.dayOfMonth }) return false
+        return true
     }
 }
