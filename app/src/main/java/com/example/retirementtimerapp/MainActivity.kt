@@ -32,11 +32,23 @@ fun MainNavigation() {
     NavHost(navController = navController, startDestination = "main") {
         composable("main") {
             WorkTimeScreen(
-                onOpenMenu = { navController.navigate("settings") }
+                onOpenMenu = { navController.navigate("settings") },
+                onNavigateToPremium = { navController.navigate("premium") },
+                onNavigateToBackground = { navController.navigate("background") }
             )
         }
         composable("settings") {
             SettingsScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable("premium") {
+            PremiumScreen(
+                onClose = { navController.popBackStack() }
+            )
+        }
+        composable("background") {
+            BackgroundScreen(
                 onBack = { navController.popBackStack() }
             )
         }

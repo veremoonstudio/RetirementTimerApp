@@ -1,9 +1,9 @@
 package com.example.retirementtimerapp
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.retirementtimerapp.ui.theme.*
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
@@ -165,6 +166,9 @@ fun SettingsScreen(
                 // Holidays
                 item {
                     SettingsSectionTitle("Holidays")
+                    var showAddHolidayDialog by remember { mutableStateOf(false) }
+                    var holidayToEdit by remember { mutableStateOf<Holiday?>(null) }
+                    
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -174,9 +178,33 @@ fun SettingsScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        // Add New Holiday Button
+                        Button(
+                            onClick = { showAddHolidayDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White.copy(alpha = 0.1f),
+                                contentColor = RetirementColors.Gold
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, RetirementColors.Gold.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = "Add New Holiday",
+                                style = TextStyle(fontFamily = CormorantGaramond, fontWeight = FontWeight.Bold)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
                         uiState.holidays.forEach { holiday ->
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .combinedClickable(
+                                        onClick = { /* Checkbox click handles the toggle */ },
+                                        onLongClick = { holidayToEdit = holiday }
+                                    ),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
@@ -199,6 +227,34 @@ fun SettingsScreen(
                                 )
                             }
                         }
+                    }
+                    
+                    if (showAddHolidayDialog) {
+                        AddHolidayDialog(
+                            onDismiss = { showAddHolidayDialog = false },
+                            onConfirm = { name, month, day ->
+                                val newList = uiState.holidays + Holiday(name, month, day)
+                                viewModel.updateHolidays(newList)
+                                showAddHolidayDialog = false
+                            }
+                        )
+                    }
+
+                    if (holidayToEdit != null) {
+                        EditHolidayDialog(
+                            holiday = holidayToEdit!!,
+                            onDismiss = { holidayToEdit = null },
+                            onUpdate = { old: Holiday, new: Holiday ->
+                                val newList = uiState.holidays.map { if (it == old) new else it }
+                                viewModel.updateHolidays(newList)
+                                holidayToEdit = null
+                            },
+                            onDelete = { holiday: Holiday ->
+                                val newList = uiState.holidays.filter { it != holiday }
+                                viewModel.updateHolidays(newList)
+                                holidayToEdit = null
+                            }
+                        )
                     }
                 }
                 
@@ -317,5 +373,171 @@ fun TimePickerDialog(
                 )
             }
         }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddHolidayDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, Int, Int) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = { if (name.isNotBlank()) onConfirm(name, selectedDate.monthValue, selectedDate.dayOfMonth) },
+                enabled = name.isNotBlank()
+            ) {
+                Text("ADD", color = RetirementColors.Gold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = RetirementColors.Cream)
+            }
+        },
+        containerColor = RetirementColors.Background,
+        title = {
+            Text(
+                "Add New Holiday",
+                style = TextStyle(fontFamily = PlayfairDisplay, color = RetirementColors.Gold)
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Holiday Name", color = RetirementColors.Gold.copy(alpha = 0.7f)) },
+                    textStyle = TextStyle(color = RetirementColors.Cream),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = RetirementColors.Gold,
+                        unfocusedBorderColor = RetirementColors.Gold.copy(alpha = 0.5f),
+                        cursorColor = RetirementColors.Gold
+                    ),
+                    singleLine = true
+                )
+                
+                SettingsRow(
+                    label = "Date",
+                    value = selectedDate.format(DateTimeFormatter.ofPattern("MMMM d")),
+                    onClick = { showDatePicker = true }
+                )
+            }
+        }
+    )
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        selectedDate = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK", color = RetirementColors.Gold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("CANCEL", color = RetirementColors.Cream)
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
+@Composable
+fun EditHolidayDialog(
+    holiday: Holiday,
+    onDismiss: () -> Unit,
+    onUpdate: (Holiday, Holiday) -> Unit,
+    onDelete: (Holiday) -> Unit
+) {
+    var name by remember { mutableStateOf(holiday.name) }
+    var month by remember { mutableStateOf(holiday.month.toString()) }
+    var day by remember { mutableStateOf(holiday.day.toString()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF003366), // Deep blue background as seen in the photo
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    textStyle = TextStyle(color = Color.White, fontSize = 18.sp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.White.copy(alpha = 0.5f),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                        cursorColor = Color.White
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Simple month/day input for matching the photo style
+                    OutlinedTextField(
+                        value = month,
+                        onValueChange = { month = it },
+                        modifier = Modifier.weight(1f),
+                        textStyle = TextStyle(color = Color.White, textAlign = TextAlign.Center),
+                        label = { Text("Month", color = Color.White.copy(alpha = 0.6f)) }
+                    )
+                    OutlinedTextField(
+                        value = day,
+                        onValueChange = { day = it },
+                        modifier = Modifier.weight(1f),
+                        textStyle = TextStyle(color = Color.White, textAlign = TextAlign.Center),
+                        label = { Text("Day", color = Color.White.copy(alpha = 0.6f)) }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            val m = month.toIntOrNull() ?: holiday.month
+                            val d = day.toIntOrNull() ?: holiday.day
+                            onUpdate(holiday, holiday.copy(name = name, month = m, day = d))
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Text("Update", color = Color(0xFF003366), fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = { onDelete(holiday) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Text("Delete", color = Color(0xFF003366), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        },
+        confirmButton = {} // Custom buttons inside 'text' to match photo layout
     )
 }
