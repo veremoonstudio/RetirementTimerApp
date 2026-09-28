@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -14,9 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,7 +67,7 @@ fun SettingsScreen(
                             )
                         }
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent
                     )
                 )
@@ -145,21 +149,35 @@ fun SettingsScreen(
                             style = TextStyle(fontFamily = CormorantGaramond, fontSize = 16.sp, color = RetirementColors.Cream)
                         )
                         var textValue by remember(uiState.vacationHours) { mutableStateOf(uiState.vacationHours.toString()) }
-                        OutlinedTextField(
-                            value = textValue,
-                            onValueChange = {
-                                textValue = it
-                                it.toIntOrNull()?.let { hours -> viewModel.updateVacationHours(hours) }
-                            },
-                            modifier = Modifier.width(80.dp),
-                            textStyle = TextStyle(fontFamily = PlayfairDisplay, color = RetirementColors.Gold, textAlign = TextAlign.End),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = RetirementColors.Gold,
-                                unfocusedBorderColor = RetirementColors.Gold.copy(alpha = 0.5f),
-                                cursorColor = RetirementColors.Gold
-                            ),
-                            singleLine = true
-                        )
+                        Box(
+                            modifier = Modifier
+                                .width(70.dp)
+                                .height(30.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color.White.copy(alpha = 0.03f))
+                                .border(1.dp, RetirementColors.Gold.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            BasicTextField(
+                                value = textValue,
+                                onValueChange = {
+                                    textValue = it
+                                    it.toIntOrNull()?.let { hours -> viewModel.updateVacationHours(hours) }
+                                },
+                                textStyle = TextStyle(
+                                    fontFamily = PlayfairDisplay,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = RetirementColors.Gold,
+                                    textAlign = TextAlign.Center
+                                ),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                cursorBrush = SolidColor(RetirementColors.Gold),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
 
@@ -168,7 +186,7 @@ fun SettingsScreen(
                     SettingsSectionTitle("Holidays")
                     var showAddHolidayDialog by remember { mutableStateOf(false) }
                     var holidayToEdit by remember { mutableStateOf<Holiday?>(null) }
-                    
+
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -194,9 +212,9 @@ fun SettingsScreen(
                                 style = TextStyle(fontFamily = CormorantGaramond, fontWeight = FontWeight.Bold)
                             )
                         }
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
                         uiState.holidays.forEach { holiday ->
                             Row(
                                 modifier = Modifier
@@ -228,7 +246,7 @@ fun SettingsScreen(
                             }
                         }
                     }
-                    
+
                     if (showAddHolidayDialog) {
                         AddHolidayDialog(
                             onDismiss = { showAddHolidayDialog = false },
@@ -257,8 +275,8 @@ fun SettingsScreen(
                         )
                     }
                 }
-                
-                item { Spacer(modifier = Modifier.height(40.dp)) }
+
+                item { Spacer(modifier = Modifier.height(110.dp)) }
             }
         }
 

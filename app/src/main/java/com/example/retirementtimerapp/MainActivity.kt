@@ -6,9 +6,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.retirementtimerapp.ui.theme.RetirementTimerAppTheme
 
@@ -29,28 +39,49 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainNavigation() {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = "main") {
-        composable("main") {
-            WorkTimeScreen(
-                onOpenMenu = { navController.navigate("settings") },
-                onNavigateToPremium = { navController.navigate("premium") },
-                onNavigateToBackground = { navController.navigate("background") }
-            )
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = "main"
+        ) {
+            composable("main") {
+                WorkTimeScreen(
+                    onOpenMenu = { navController.navigate("settings") },
+                    onNavigateToPremium = { navController.navigate("premium") },
+                    onNavigateToBackground = { navController.navigate("background") }
+                )
+            }
+            composable("settings") {
+                SettingsScreen(
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("premium") {
+                PremiumScreen(
+                    onClose = { navController.popBackStack() }
+                )
+            }
+            composable("background") {
+                BackgroundScreen(
+                    onBack = { navController.popBackStack() },
+                    onNavigateToPremium = { navController.navigate("premium") }
+                )
+            }
         }
-        composable("settings") {
-            SettingsScreen(
-                onBack = { navController.popBackStack() }
-            )
-        }
-        composable("premium") {
-            PremiumScreen(
-                onClose = { navController.popBackStack() }
-            )
-        }
-        composable("background") {
-            BackgroundScreen(
-                onBack = { navController.popBackStack() }
-            )
+
+        // Баннер накладывается СВЕРХУ, не толкая интерфейс
+        if (currentRoute != "premium") {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding() // Над панелью навигации
+            ) {
+                val bannerHeight = if (currentRoute == "background") 75.dp else 100.dp
+                BottomAdBanner(height = bannerHeight)
+            }
         }
     }
 }

@@ -160,15 +160,6 @@ fun WorkTimeScreen(
                 }
 
                 Spacer(modifier = Modifier.weight(2f))
-                
-                Text(
-                    text = stringResource(R.string.advertisement),
-                    color = RetirementColors.AdTextColor,
-                    fontSize = 11.sp,
-                    letterSpacing = 1.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 32.dp)
-                )
             }
         }
 
