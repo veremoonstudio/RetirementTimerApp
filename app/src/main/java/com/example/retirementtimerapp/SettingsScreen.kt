@@ -41,7 +41,7 @@ fun SettingsScreen(
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
 
-    MarbleBackground {
+    MarbleBackground(selectedBackground = uiState.selectedBackground) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -161,9 +161,16 @@ fun SettingsScreen(
                         ) {
                             BasicTextField(
                                 value = textValue,
-                                onValueChange = {
-                                    textValue = it
-                                    it.toIntOrNull()?.let { hours -> viewModel.updateVacationHours(hours) }
+                                onValueChange = { newValue ->
+                                    val cleanInput = newValue.filter { char -> char.isDigit() }
+                                    if (cleanInput.isEmpty()) {
+                                        textValue = "0"
+                                        viewModel.updateVacationHours(0)
+                                    } else {
+                                        val hours = cleanInput.toIntOrNull() ?: 0
+                                        textValue = hours.toString()
+                                        viewModel.updateVacationHours(hours)
+                                    }
                                 },
                                 textStyle = TextStyle(
                                     fontFamily = PlayfairDisplay,

@@ -30,7 +30,8 @@ private data class SettingsData(
     val startTimeStr: String,
     val endTimeStr: String,
     val vacationHours: Int,
-    val holidays: List<SavedHoliday>
+    val holidays: List<SavedHoliday>,
+    val selectedBackground: String = "None"
 )
 
 @Serializable
@@ -67,7 +68,8 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
                                     startTime = LocalTime.parse(data.startTimeStr),
                                     endTime = LocalTime.parse(data.endTimeStr),
                                     vacationHours = data.vacationHours,
-                                    holidays = data.holidays.map { h -> Holiday(h.name, h.month, h.day, h.isEnabled) }
+                                    holidays = data.holidays.map { h -> Holiday(h.name, h.month, h.day, h.isEnabled) },
+                                    selectedBackground = data.selectedBackground
                                 )
                             }
                         } catch (e: Exception) {
@@ -107,6 +109,11 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         saveAllSettings()
     }
 
+    fun updateSelectedBackground(background: String) {
+        _uiState.update { it.copy(selectedBackground = background) }
+        saveAllSettings()
+    }
+
     private fun saveAllSettings() {
         val state = _uiState.value
         val data = SettingsData(
@@ -115,7 +122,8 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
             startTimeStr = state.startTime.toString(),
             endTimeStr = state.endTime.toString(),
             vacationHours = state.vacationHours,
-            holidays = state.holidays.map { h -> SavedHoliday(h.name, h.month, h.day, h.isEnabled) }
+            holidays = state.holidays.map { h -> SavedHoliday(h.name, h.month, h.day, h.isEnabled) },
+            selectedBackground = state.selectedBackground
         )
         viewModelScope.launch {
             getApplication<Application>().dataStore.edit { preferences ->

@@ -1,5 +1,6 @@
 package com.example.retirementtimerapp
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,6 +25,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -49,7 +52,7 @@ fun WorkTimeScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
 
-    MarbleBackground {
+    MarbleBackground(selectedBackground = uiState.selectedBackground) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -68,11 +71,13 @@ fun WorkTimeScreen(
                         )
                     }
                     
-                    TopBarItem(label = stringResource(R.string.premium)) {
-                        IconSquareButton(
-                            icon = Icons.Filled.WorkspacePremium,
-                            onClick = onNavigateToPremium
-                        )
+                    if (!BuildConfig.IS_PREMIUM) {
+                        TopBarItem(label = stringResource(R.string.premium)) {
+                            IconSquareButton(
+                                icon = Icons.Filled.WorkspacePremium,
+                                onClick = onNavigateToPremium
+                            )
+                        }
                     }
                     
                     TopBarItem(label = stringResource(R.string.background)) {
@@ -191,37 +196,70 @@ fun WorkTimeScreen(
     }
 }
 
+fun getBackgroundDrawableRes(name: String): Int {
+    return when (name) {
+        "Palm Beach" -> R.drawable.bg_palm_beach
+        "Mountain Road" -> R.drawable.bg_mountain_road
+        "Golf Course" -> R.drawable.bg_golf_course
+        "Lake" -> R.drawable.bg_lake
+        else -> 0
+    }
+}
+
 @Composable
-fun MarbleBackground(content: @Composable () -> Unit) {
+fun MarbleBackground(
+    selectedBackground: String = "None",
+    content: @Composable () -> Unit
+) {
+    val imageResId = remember(selectedBackground) { getBackgroundDrawableRes(selectedBackground) }
+
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MarbleBackground)
-            .drawBehind {
-                // Marble Vein Top Left
-                drawOval(
-                    brush = Brush.radialGradient(
-                        0.0f to MarbleVeinWhite,
-                        1.0f to Color.Transparent,
-                        center = Offset(-150f, -100f),
-                        radius = 500f
-                    ),
-                    topLeft = Offset(-150f, -100f),
-                    size = Size(500f, 200f)
-                )
-                // Marble Vein Top Right
-                drawOval(
-                    brush = Brush.radialGradient(
-                        0.0f to Color(0xFFFFFFFF).copy(alpha = 0.05f),
-                        1.0f to Color.Transparent,
-                        center = Offset(size.width - 200f, -50f),
-                        radius = 400f
-                    ),
-                    topLeft = Offset(size.width - 200f, -50f),
-                    size = Size(400f, 300f)
-                )
-            }
+        modifier = Modifier.fillMaxSize()
     ) {
+        if (imageResId != 0) {
+            Image(
+                painter = painterResource(id = imageResId),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.55f))
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MarbleBackground)
+                    .drawBehind {
+                        // Marble Vein Top Left
+                        drawOval(
+                            brush = Brush.radialGradient(
+                                0.0f to MarbleVeinWhite,
+                                1.0f to Color.Transparent,
+                                center = Offset(-150f, -100f),
+                                radius = 500f
+                            ),
+                            topLeft = Offset(-150f, -100f),
+                            size = Size(500f, 200f)
+                        )
+                        // Marble Vein Top Right
+                        drawOval(
+                            brush = Brush.radialGradient(
+                                0.0f to Color(0xFFFFFFFF).copy(alpha = 0.05f),
+                                1.0f to Color.Transparent,
+                                center = Offset(size.width - 200f, -50f),
+                                radius = 400f
+                            ),
+                            topLeft = Offset(size.width - 200f, -50f),
+                            size = Size(400f, 300f)
+                        )
+                    }
+            )
+        }
+
         content()
     }
 }

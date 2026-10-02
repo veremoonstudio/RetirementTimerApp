@@ -23,7 +23,8 @@ data class WorkTimeUiState(
         Holiday("Presidents' Day", 2, 20),
         Holiday("Memorial Day", 5, 29)
     ),
-    val timeLeft: TimeLeftData = TimeLeftData()
+    val timeLeft: TimeLeftData = TimeLeftData(),
+    val selectedBackground: String = "None"
 )
 
 data class Holiday(

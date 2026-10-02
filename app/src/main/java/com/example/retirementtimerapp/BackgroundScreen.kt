@@ -26,19 +26,23 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.retirementtimerapp.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BackgroundScreen(
+    viewModel: WorkTimeViewModel = viewModel(),
     onBack: () -> Unit,
     onNavigateToPremium: () -> Unit = {}
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val backgrounds = listOf("None", "Palm Beach", "Mountain Road", "Golf Course", "Lake")
-    var unlockedBackgrounds by remember { mutableStateOf(setOf("None")) }
-    var selectedBg by remember { mutableStateOf("None") }
+    val unlockedBackgrounds = remember(BuildConfig.IS_PREMIUM) {
+        if (BuildConfig.IS_PREMIUM) backgrounds.toSet() else setOf("None")
+    }
 
-    MarbleBackground {
+    MarbleBackground(selectedBackground = uiState.selectedBackground) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -87,31 +91,35 @@ fun BackgroundScreen(
                         val isLocked = bg !in unlockedBackgrounds
                         BackgroundCard(
                             name = bg,
-                            isSelected = bg == selectedBg,
+                            isSelected = bg == uiState.selectedBackground,
                             isLocked = isLocked,
                             onClick = {
                                 if (isLocked) {
                                     onNavigateToPremium()
                                 } else {
-                                    selectedBg = bg
+                                    viewModel.updateSelectedBackground(bg)
                                 }
                             }
                         )
                     }
                 }
 
-                Text(
-                    text = "Tap to unlock new backgrounds!",
-                    style = TextStyle(
-                        fontFamily = CormorantGaramond,
-                        fontStyle = FontStyle.Italic,
-                        fontSize = 16.sp,
-                        color = RetirementColors.Gold.copy(alpha = 0.8f)
-                    ),
-                    modifier = Modifier
-                        .clickable { onNavigateToPremium() }
-                        .padding(top = 16.dp, bottom = 85.dp)
-                )
+                if (!BuildConfig.IS_PREMIUM) {
+                    Text(
+                        text = "Tap to unlock new backgrounds!",
+                        style = TextStyle(
+                            fontFamily = CormorantGaramond,
+                            fontStyle = FontStyle.Italic,
+                            fontSize = 16.sp,
+                            color = RetirementColors.Gold.copy(alpha = 0.8f)
+                        ),
+                        modifier = Modifier
+                            .clickable { onNavigateToPremium() }
+                            .padding(top = 16.dp, bottom = 85.dp)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(85.dp))
+                }
             }
         }
     }

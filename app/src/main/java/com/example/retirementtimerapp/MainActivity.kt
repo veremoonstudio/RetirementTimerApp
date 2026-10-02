@@ -73,7 +73,7 @@ fun MainNavigation() {
         }
 
         // Баннер накладывается СВЕРХУ, не толкая интерфейс
-        if (currentRoute != "premium") {
+        if (currentRoute != "premium" && !BuildConfig.IS_PREMIUM) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

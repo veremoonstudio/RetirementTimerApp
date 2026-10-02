@@ -18,6 +18,18 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    flavorDimensions += "version"
+    productFlavors {
+        create("free") {
+            dimension = "version"
+            buildConfigField("Boolean", "IS_PREMIUM", "false")
+        }
+        create("premium") {
+            dimension = "version"
+            buildConfigField("Boolean", "IS_PREMIUM", "true")
+        }
+    }
+
     buildTypes {
         release {
             optimization {
@@ -31,6 +43,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
