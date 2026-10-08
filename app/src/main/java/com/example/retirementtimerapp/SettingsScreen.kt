@@ -7,6 +7,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,9 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -38,6 +42,7 @@ fun SettingsScreen(
     viewModel: WorkTimeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val focusManager = LocalFocusManager.current
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
 
@@ -148,7 +153,15 @@ fun SettingsScreen(
                             text = "Vacation Hours",
                             style = TextStyle(fontFamily = CormorantGaramond, fontSize = 16.sp, color = RetirementColors.Cream)
                         )
-                        var textValue by remember(uiState.vacationHours) { mutableStateOf(uiState.vacationHours.toString()) }
+                        var isFocused by remember { mutableStateOf(false) }
+                        var textValue by remember { mutableStateOf(uiState.vacationHours.toString()) }
+
+                        LaunchedEffect(uiState.vacationHours) {
+                            if (!isFocused) {
+                                textValue = uiState.vacationHours.toString()
+                            }
+                        }
+
                         Box(
                             modifier = Modifier
                                 .width(70.dp)
@@ -163,14 +176,9 @@ fun SettingsScreen(
                                 value = textValue,
                                 onValueChange = { newValue ->
                                     val cleanInput = newValue.filter { char -> char.isDigit() }
-                                    if (cleanInput.isEmpty()) {
-                                        textValue = "0"
-                                        viewModel.updateVacationHours(0)
-                                    } else {
-                                        val hours = cleanInput.toIntOrNull() ?: 0
-                                        textValue = hours.toString()
-                                        viewModel.updateVacationHours(hours)
-                                    }
+                                    textValue = cleanInput
+                                    val hours = cleanInput.toIntOrNull() ?: 0
+                                    viewModel.updateVacationHours(hours)
                                 },
                                 textStyle = TextStyle(
                                     fontFamily = PlayfairDisplay,
@@ -180,9 +188,29 @@ fun SettingsScreen(
                                     textAlign = TextAlign.Center
                                 ),
                                 singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        if (textValue.isEmpty()) {
+                                            textValue = "0"
+                                        }
+                                        focusManager.clearFocus()
+                                    }
+                                ),
                                 cursorBrush = SolidColor(RetirementColors.Gold),
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onFocusChanged { focusState ->
+                                        isFocused = focusState.isFocused
+                                        if (!focusState.isFocused) {
+                                            if (textValue.isEmpty()) {
+                                                textValue = "0"
+                                            }
+                                        }
+                                    }
                             )
                         }
                     }

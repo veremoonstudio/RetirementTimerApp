@@ -154,7 +154,21 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
 
     private fun calculateTotalTime(now: LocalDateTime, retirementDate: LocalDate): TimeLeftData {
         val target = retirementDate.atTime(LocalTime.MAX)
-        if (now.isAfter(target)) return TimeLeftData("00", "00", "00", "00")
+        if (now.isAfter(target)) {
+            val duration = Duration.between(target, now)
+            val days = duration.toDays()
+            val hours = duration.toHours() % 24
+            val minutes = duration.toMinutes() % 60
+            val seconds = duration.seconds % 60
+
+            val formattedDays = if (days == 0L) "\u221200" else "\u2212${String.format(Locale.US, "%02d", days)}"
+            return TimeLeftData(
+                days = formattedDays,
+                hours = String.format(Locale.US, "%02d", hours),
+                minutes = String.format(Locale.US, "%02d", minutes),
+                seconds = String.format(Locale.US, "%02d", seconds)
+            )
+        }
 
         val duration = Duration.between(now, target)
         val days = duration.toDays()
@@ -174,8 +188,48 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         val startTime = state.startTime
         val endTime = state.endTime
         val workSecondsPerDay = Duration.between(startTime, endTime).seconds
+        if (workSecondsPerDay <= 0) return TimeLeftData("00", "00", "00", "00")
 
+        val targetDateTime = retirementDate.atTime(endTime)
         val today = now.toLocalDate()
+
+        if (now.isAfter(targetDateTime)) {
+            var pastWorkDays = 0L
+            var cursor = retirementDate.plusDays(1)
+            while (!cursor.isAfter(today.minusDays(1))) {
+                if (isWorkDay(cursor, state)) pastWorkDays++
+                cursor = cursor.plusDays(1)
+            }
+
+            var todaySeconds = 0L
+            if (isWorkDay(today, state) && !today.isEqual(retirementDate)) {
+                val nowTime = now.toLocalTime()
+                if (nowTime.isAfter(startTime)) {
+                    val effectiveEnd = if (nowTime.isAfter(endTime)) endTime else nowTime
+                    todaySeconds = Duration.between(startTime, effectiveEnd).seconds
+                }
+            }
+
+            var totalPastWorkSeconds = (pastWorkDays * workSecondsPerDay) + todaySeconds
+            if (totalPastWorkSeconds < 0) totalPastWorkSeconds = 0
+
+            val daysPast = totalPastWorkSeconds / workSecondsPerDay
+            var remainder = totalPastWorkSeconds % workSecondsPerDay
+
+            val hoursPast = remainder / 3600
+            remainder %= 3600
+            val minutesPast = remainder / 60
+            val secondsPast = remainder % 60
+
+            val formattedDays = if (daysPast == 0L) "\u221200" else "\u2212${String.format(Locale.US, "%02d", daysPast)}"
+
+            return TimeLeftData(
+                days = formattedDays,
+                hours = String.format(Locale.US, "%02d", hoursPast),
+                minutes = String.format(Locale.US, "%02d", minutesPast),
+                seconds = String.format(Locale.US, "%02d", secondsPast)
+            )
+        }
 
         var futureWorkDays = 0L
         var cursor = today.plusDays(1)
