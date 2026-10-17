@@ -86,19 +86,19 @@ fun PremiumScreen(onClose: () -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     PremiumOption(
                         title = "Lifetime",
-                        price = "599,99 грн.",
+                        price = "119,99 грн.",
                         isSelected = selectedOption == "Lifetime",
                         onClick = { selectedOption = "Lifetime" }
                     )
                     PremiumOption(
                         title = "Yearly",
-                        price = "399,99 грн.",
+                        price = "79,99 грн.",
                         isSelected = selectedOption == "Yearly",
                         onClick = { selectedOption = "Yearly" }
                     )
                     PremiumOption(
                         title = "Monthly",
-                        price = "45,99 грн.",
+                        price = "9,19 грн.",
                         isSelected = selectedOption == "Monthly",
                         onClick = { selectedOption = "Monthly" }
                     )

@@ -22,10 +22,14 @@ android {
     productFlavors {
         create("free") {
             dimension = "version"
+            applicationIdSuffix = ".free"
+            resValue("string", "app_name", "Retirement Timer")
             buildConfigField("Boolean", "IS_PREMIUM", "false")
         }
         create("premium") {
             dimension = "version"
+            applicationIdSuffix = ".premium"
+            resValue("string", "app_name", "Retirement Timer Premium")
             buildConfigField("Boolean", "IS_PREMIUM", "true")
         }
     }
@@ -44,6 +48,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
     }
 }
 
@@ -57,6 +62,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)

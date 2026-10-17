@@ -10,6 +10,7 @@ datastore = "1.2.1"
 navigation = "2.10.1"
 lifecycleViewmodel = "2.11.0"
 serialization = "1.6.3"
+splashscreen = "1.2.0"
 kotlin = "2.2.10"
 composeBom = "2026.02.01"
 
@@ -32,6 +33,7 @@ androidx-compose-material-icons-extended = { group = "androidx.compose.material"
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodel" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 
 [plugins]

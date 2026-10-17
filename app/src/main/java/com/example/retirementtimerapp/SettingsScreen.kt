@@ -33,6 +33,7 @@ import com.example.retirementtimerapp.ui.theme.*
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -393,6 +394,7 @@ fun TimePickerDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.border(1.dp, RetirementColors.Gold, RoundedCornerShape(28.dp)),
         confirmButton = {
             TextButton(onClick = { onConfirm(state.hour, state.minute) }) {
                 Text("OK", color = RetirementColors.Gold)
@@ -441,6 +443,7 @@ fun AddHolidayDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.border(1.dp, RetirementColors.Gold, RoundedCornerShape(28.dp)),
         confirmButton = {
             TextButton(
                 onClick = { if (name.isNotBlank()) onConfirm(name, selectedDate.monthValue, selectedDate.dayOfMonth) },
@@ -510,6 +513,7 @@ fun AddHolidayDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditHolidayDialog(
     holiday: Holiday,
@@ -518,79 +522,105 @@ fun EditHolidayDialog(
     onDelete: (Holiday) -> Unit
 ) {
     var name by remember { mutableStateOf(holiday.name) }
-    var month by remember { mutableStateOf(holiday.month.toString()) }
-    var day by remember { mutableStateOf(holiday.day.toString()) }
+    var selectedDate by remember {
+        mutableStateOf(
+            try {
+                LocalDate.of(LocalDate.now().year, holiday.month, holiday.day)
+            } catch (e: Exception) {
+                LocalDate.now()
+            }
+        )
+    }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF003366), // Deep blue background as seen in the photo
+        modifier = Modifier.border(1.dp, RetirementColors.Gold, RoundedCornerShape(28.dp)),
+        containerColor = RetirementColors.Background,
+        title = {
+            Text(
+                "Edit Holiday",
+                style = TextStyle(fontFamily = PlayfairDisplay, color = RetirementColors.Gold)
+            )
+        },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    textStyle = TextStyle(color = Color.White, fontSize = 18.sp),
+                    label = { Text("Holiday Name", color = RetirementColors.Gold.copy(alpha = 0.7f)) },
+                    textStyle = TextStyle(color = RetirementColors.Cream, fontSize = 16.sp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.White.copy(alpha = 0.5f),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
-                        cursorColor = Color.White
+                        focusedBorderColor = RetirementColors.Gold,
+                        unfocusedBorderColor = RetirementColors.Gold.copy(alpha = 0.5f),
+                        cursorColor = RetirementColors.Gold
                     ),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Simple month/day input for matching the photo style
-                    OutlinedTextField(
-                        value = month,
-                        onValueChange = { month = it },
-                        modifier = Modifier.weight(1f),
-                        textStyle = TextStyle(color = Color.White, textAlign = TextAlign.Center),
-                        label = { Text("Month", color = Color.White.copy(alpha = 0.6f)) }
-                    )
-                    OutlinedTextField(
-                        value = day,
-                        onValueChange = { day = it },
-                        modifier = Modifier.weight(1f),
-                        textStyle = TextStyle(color = Color.White, textAlign = TextAlign.Center),
-                        label = { Text("Day", color = Color.White.copy(alpha = 0.6f)) }
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            val m = month.toIntOrNull() ?: holiday.month
-                            val d = day.toIntOrNull() ?: holiday.day
-                            onUpdate(holiday, holiday.copy(name = name, month = m, day = d))
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                        shape = RoundedCornerShape(24.dp)
-                    ) {
-                        Text("Update", color = Color(0xFF003366), fontWeight = FontWeight.Bold)
-                    }
-                    Button(
-                        onClick = { onDelete(holiday) },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                        shape = RoundedCornerShape(24.dp)
-                    ) {
-                        Text("Delete", color = Color(0xFF003366), fontWeight = FontWeight.Bold)
-                    }
-                }
+                SettingsRow(
+                    label = "Date",
+                    value = selectedDate.format(DateTimeFormatter.ofPattern("MMMM d")),
+                    onClick = { showDatePicker = true }
+                )
             }
         },
-        confirmButton = {} // Custom buttons inside 'text' to match photo layout
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onUpdate(
+                        holiday,
+                        holiday.copy(
+                            name = name,
+                            month = selectedDate.monthValue,
+                            day = selectedDate.dayOfMonth
+                        )
+                    )
+                }
+            ) {
+                Text("UPDATE", color = RetirementColors.Gold)
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = { onDelete(holiday) }) {
+                    Text("DELETE", color = Color(0xFFCF6679))
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("CANCEL", color = RetirementColors.Cream)
+                }
+            }
+        }
     )
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        selectedDate = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK", color = RetirementColors.Gold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("CANCEL", color = RetirementColors.Cream)
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }

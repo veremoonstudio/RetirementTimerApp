@@ -76,14 +76,14 @@ fun BackgroundScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.weight(1f)
                 ) {
@@ -115,10 +115,10 @@ fun BackgroundScreen(
                         ),
                         modifier = Modifier
                             .clickable { onNavigateToPremium() }
-                            .padding(top = 16.dp, bottom = 85.dp)
+                            .padding(top = 16.dp, bottom = 110.dp)
                     )
                 } else {
-                    Spacer(modifier = Modifier.height(85.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }
@@ -151,7 +151,7 @@ fun BackgroundCard(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
-                .aspectRatio(0.6f)
+                .aspectRatio(0.55f)
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color.White.copy(alpha = 0.05f))
                 .border(

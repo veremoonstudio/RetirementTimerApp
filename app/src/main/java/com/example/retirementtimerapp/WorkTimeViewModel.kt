@@ -25,6 +25,7 @@ private val Context.dataStore by preferencesDataStore(name = "work_time_settings
 
 @Serializable
 private data class SettingsData(
+    val isWorkTimeMode: Boolean = true,
     val retirementDateEpoch: Long,
     val workDays: List<DayOfWeek>,
     val startTimeStr: String,
@@ -63,6 +64,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
                             val data = Json.decodeFromString<SettingsData>(json)
                             _uiState.update {
                                 it.copy(
+                                    isWorkTimeMode = data.isWorkTimeMode,
                                     retirementDate = LocalDate.ofEpochDay(data.retirementDateEpoch),
                                     workDays = data.workDays.toSet(),
                                     startTime = LocalTime.parse(data.startTimeStr),
@@ -82,6 +84,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
 
     fun toggleMode(isWorkTime: Boolean) {
         _uiState.update { it.copy(isWorkTimeMode = isWorkTime) }
+        saveAllSettings()
     }
 
     fun updateRetirementDate(date: LocalDate) {
@@ -117,6 +120,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
     private fun saveAllSettings() {
         val state = _uiState.value
         val data = SettingsData(
+            isWorkTimeMode = state.isWorkTimeMode,
             retirementDateEpoch = state.retirementDate.toEpochDay(),
             workDays = state.workDays.toList(),
             startTimeStr = state.startTime.toString(),

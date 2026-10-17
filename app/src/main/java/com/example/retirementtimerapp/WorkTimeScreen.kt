@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
@@ -71,7 +72,9 @@ fun WorkTimeScreen(
                         )
                     }
                     
-                    if (!BuildConfig.IS_PREMIUM) {
+                    Box(
+                        modifier = Modifier.alpha(if (BuildConfig.IS_PREMIUM) 0f else 1f)
+                    ) {
                         TopBarItem(label = stringResource(R.string.premium)) {
                             IconSquareButton(
                                 icon = Icons.Filled.WorkspacePremium,

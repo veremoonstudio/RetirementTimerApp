@@ -21,7 +21,15 @@ data class WorkTimeUiState(
         Holiday("New Year's Day", 1, 1),
         Holiday("Martin Luther King Jr. Day", 1, 16),
         Holiday("Presidents' Day", 2, 20),
-        Holiday("Memorial Day", 5, 29)
+        Holiday("Memorial Day", 5, 29),
+        Holiday("Independence Day", 7, 4),
+        Holiday("Labor Day", 9, 4),
+        Holiday("Columbus Day", 10, 9),
+        Holiday("Veterans Day", 11, 11),
+        Holiday("Thanksgiving Day", 11, 23),
+        Holiday("Christmas Eve", 12, 24),
+        Holiday("Christmas Day", 12, 25),
+        Holiday("New Year's Eve", 12, 31)
     ),
     val timeLeft: TimeLeftData = TimeLeftData(),
     val selectedBackground: String = "None"
