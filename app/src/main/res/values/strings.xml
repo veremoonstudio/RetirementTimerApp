@@ -51,4 +51,5 @@
     <string name="bg_golf_course">Golf Course</string>
     <string name="bg_lake">Lake</string>
     <string name="tap_to_unlock">Tap to unlock new backgrounds!</string>
+    <string name="widget_description">Shows retirement countdown on home screen</string>
 </resources>

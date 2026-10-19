@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
@@ -133,6 +134,11 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             getApplication<Application>().dataStore.edit { preferences ->
                 preferences[SETTINGS_KEY] = Json.encodeToString(data)
+            }
+            try {
+                RetirementGlanceWidget().updateAll(getApplication())
+            } catch (e: Exception) {
+                // Ignore if widget update fails
             }
         }
     }
