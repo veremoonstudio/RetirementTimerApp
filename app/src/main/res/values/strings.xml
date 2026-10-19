@@ -14,4 +14,41 @@
     <string name="select_date">Select Date</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">SETTINGS</string>
+    <string name="work_days_title">WORK DAYS</string>
+    <string name="working_hours_title">WORKING HOURS</string>
+    <string name="start_time">Start Time</string>
+    <string name="end_time">End Time</string>
+    <string name="vacation_title">VACATION</string>
+    <string name="vacation_hours">Vacation Hours</string>
+    <string name="holidays_title">HOLIDAYS</string>
+    <string name="add_new_holiday">Add New Holiday</string>
+    <string name="holiday_name">Holiday Name</string>
+    <string name="date_label">Date</string>
+    <string name="add">ADD</string>
+    <string name="update">UPDATE</string>
+    <string name="delete">DELETE</string>
+    <string name="edit_holiday">Edit Holiday</string>
+
+    <!-- Premium Screen -->
+    <string name="get_premium_title">GET PREMIUM TODAY!</string>
+    <string name="get_premium_subtitle">Unlock all Backgrounds, and say goodbye to ads!</string>
+    <string name="lifetime">Lifetime</string>
+    <string name="yearly">Yearly</string>
+    <string name="monthly">Monthly</string>
+    <string name="continue_button">CONTINUE</string>
+    <string name="restore_purchases">Restore</string>
+    <string name="terms_link">Terms</string>
+    <string name="privacy_policy_link">Privacy Policy</string>
+
+    <!-- Background Screen -->
+    <string name="backgrounds_title">BACKGROUNDS</string>
+    <string name="bg_none">None</string>
+    <string name="bg_palm_beach">Palm Beach</string>
+    <string name="bg_mountain_road">Mountain Road</string>
+    <string name="bg_golf_course">Golf Course</string>
+    <string name="bg_lake">Lake</string>
+    <string name="tap_to_unlock">Tap to unlock new backgrounds!</string>
 </resources>

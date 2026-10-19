@@ -1,9 +1,8 @@
-package com.example.retirementtimerapp
+package com.valentsytnik.retirementtimer
 
 import android.app.Application
 import android.content.Context
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.AndroidViewModel
@@ -45,6 +44,8 @@ private data class SavedHoliday(
 
 class WorkTimeViewModel(application: Application) : AndroidViewModel(application) {
     private val SETTINGS_KEY = stringPreferencesKey("all_settings")
+
+    val billingManager = BillingManager(application)
     
     private val _uiState = MutableStateFlow(WorkTimeUiState())
     val uiState: StateFlow<WorkTimeUiState> = _uiState.asStateFlow()
@@ -257,7 +258,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
 
         val days = totalWorkSeconds / workSecondsPerDay
         var remainder = totalWorkSeconds % workSecondsPerDay
-        
+
         val hours = remainder / 3600
         remainder %= 3600
         val minutes = remainder / 60

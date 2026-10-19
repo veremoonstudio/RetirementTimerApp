@@ -1,12 +1,19 @@
-# Add project specific R8 rules here.
-# AGP will combine all keep rule files in src/main/keepRules to pass to R8
-#
-# For more details, see
-#   https://d.android.com/r/tools/r8/keep-rules
+# R8 / Proguard rules for Retirement Timer App
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep Kotlinx Serialization models
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+-keepclassmembers class * {
+    @kotlinx.serialization.Serializable <fields>;
+    @kotlinx.serialization.Serializable *;
+}
+-keepclassmembers class *$$serializer {
+    *** INSTANCE;
+}
+
+# Keep DataStore & SettingsData models
+-keep class com.valentsytnik.retirementtimer.SettingsData { *; }
+-keep class com.valentsytnik.retirementtimer.SavedHoliday { *; }
+
+# Google Play Billing & AdMob
+-keep class com.android.billingclient.api.** { *; }
+-keep class com.google.android.gms.ads.** { *; }

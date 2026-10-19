@@ -1,4 +1,4 @@
-package com.example.retirementtimerapp
+package com.valentsytnik.retirementtimer
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,13 +21,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.retirementtimerapp.ui.theme.*
+import com.valentsytnik.retirementtimer.BuildConfig
+import com.valentsytnik.retirementtimer.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,9 +39,12 @@ fun BackgroundScreen(
     onNavigateToPremium: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isPremiumUnlocked by viewModel.billingManager.isPremiumUnlocked.collectAsState()
+    val isPremium = BuildConfig.IS_PREMIUM || isPremiumUnlocked
+
     val backgrounds = listOf("None", "Palm Beach", "Mountain Road", "Golf Course", "Lake")
-    val unlockedBackgrounds = remember(BuildConfig.IS_PREMIUM) {
-        if (BuildConfig.IS_PREMIUM) backgrounds.toSet() else setOf("None")
+    val unlockedBackgrounds = remember(isPremium) {
+        if (isPremium) backgrounds.toSet() else setOf("None")
     }
 
     MarbleBackground(selectedBackground = uiState.selectedBackground) {
@@ -49,7 +54,7 @@ fun BackgroundScreen(
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
-                            text = "BACKGROUNDS",
+                            text = stringResource(R.string.backgrounds_title),
                             style = TextStyle(
                                 fontFamily = PlayfairDisplay,
                                 fontWeight = FontWeight.SemiBold,
@@ -104,9 +109,9 @@ fun BackgroundScreen(
                     }
                 }
 
-                if (!BuildConfig.IS_PREMIUM) {
+                if (!isPremium) {
                     Text(
-                        text = "Tap to unlock new backgrounds!",
+                        text = stringResource(R.string.tap_to_unlock),
                         style = TextStyle(
                             fontFamily = CormorantGaramond,
                             fontStyle = FontStyle.Italic,
@@ -148,6 +153,15 @@ fun BackgroundCard(
         } else 0
     }
 
+    val displayName = when (name) {
+        "None" -> stringResource(R.string.bg_none)
+        "Palm Beach" -> stringResource(R.string.bg_palm_beach)
+        "Mountain Road" -> stringResource(R.string.bg_mountain_road)
+        "Golf Course" -> stringResource(R.string.bg_golf_course)
+        "Lake" -> stringResource(R.string.bg_lake)
+        else -> name
+    }
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
@@ -164,7 +178,7 @@ fun BackgroundCard(
         ) {
             if (name == "None") {
                 Text(
-                    text = "None",
+                    text = displayName,
                     style = TextStyle(
                         fontFamily = PlayfairDisplay,
                         fontSize = 18.sp,
@@ -206,7 +220,7 @@ fun BackgroundCard(
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = name,
+            text = displayName,
             style = TextStyle(
                 fontFamily = CormorantGaramond,
                 fontSize = 14.sp,

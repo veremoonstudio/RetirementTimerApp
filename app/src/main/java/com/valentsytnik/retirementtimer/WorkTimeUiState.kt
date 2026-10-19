@@ -1,4 +1,4 @@
-package com.example.retirementtimerapp
+package com.valentsytnik.retirementtimer
 
 import java.time.DayOfWeek
 import java.time.LocalDate

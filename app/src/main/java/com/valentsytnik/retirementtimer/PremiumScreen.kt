@@ -1,5 +1,6 @@
-package com.example.retirementtimerapp
+package com.valentsytnik.retirementtimer
 
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,18 +16,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.retirementtimerapp.ui.theme.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.valentsytnik.retirementtimer.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PremiumScreen(onClose: () -> Unit) {
-    var selectedOption by remember { mutableStateOf("Yearly") }
+fun PremiumScreen(
+    onClose: () -> Unit,
+    viewModel: WorkTimeViewModel = viewModel()
+) {
+    var selectedOption by remember { mutableStateOf(BillingManager.PRODUCT_YEARLY) }
+    val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
+    val productPrices by viewModel.billingManager.productPrices.collectAsState()
 
     MarbleBackground {
         Scaffold(
@@ -61,7 +71,7 @@ fun PremiumScreen(onClose: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "GET PREMIUM TODAY!",
+                        text = stringResource(R.string.get_premium_title),
                         style = TextStyle(
                             fontFamily = PlayfairDisplay,
                             fontWeight = FontWeight.Bold,
@@ -72,7 +82,7 @@ fun PremiumScreen(onClose: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Unlock all Backgrounds, and say goodbye to ads!",
+                        text = stringResource(R.string.get_premium_subtitle),
                         style = TextStyle(
                             fontFamily = CormorantGaramond,
                             fontSize = 18.sp,
@@ -85,29 +95,34 @@ fun PremiumScreen(onClose: () -> Unit) {
                 // Options
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     PremiumOption(
-                        title = "Lifetime",
-                        price = "119,99 грн.",
-                        isSelected = selectedOption == "Lifetime",
-                        onClick = { selectedOption = "Lifetime" }
+                        title = stringResource(R.string.lifetime),
+                        price = productPrices[BillingManager.PRODUCT_LIFETIME] ?: "$4.99",
+                        isSelected = selectedOption == BillingManager.PRODUCT_LIFETIME,
+                        onClick = { selectedOption = BillingManager.PRODUCT_LIFETIME }
                     )
                     PremiumOption(
-                        title = "Yearly",
-                        price = "79,99 грн.",
-                        isSelected = selectedOption == "Yearly",
-                        onClick = { selectedOption = "Yearly" }
+                        title = stringResource(R.string.yearly),
+                        price = productPrices[BillingManager.PRODUCT_YEARLY] ?: "$2.99/yr",
+                        isSelected = selectedOption == BillingManager.PRODUCT_YEARLY,
+                        onClick = { selectedOption = BillingManager.PRODUCT_YEARLY }
                     )
                     PremiumOption(
-                        title = "Monthly",
-                        price = "9,19 грн.",
-                        isSelected = selectedOption == "Monthly",
-                        onClick = { selectedOption = "Monthly" }
+                        title = stringResource(R.string.monthly),
+                        price = productPrices[BillingManager.PRODUCT_MONTHLY] ?: "$0.99/mo",
+                        isSelected = selectedOption == BillingManager.PRODUCT_MONTHLY,
+                        onClick = { selectedOption = BillingManager.PRODUCT_MONTHLY }
                     )
                 }
 
                 // Footer
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Button(
-                        onClick = { /* Process */ },
+                        onClick = {
+                            val activity = context as? Activity
+                            if (activity != null) {
+                                viewModel.billingManager.launchBillingFlow(activity, selectedOption)
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp)
@@ -119,7 +134,7 @@ fun PremiumScreen(onClose: () -> Unit) {
                         shape = RoundedCornerShape(28.dp)
                     ) {
                         Text(
-                            "CONTINUE",
+                            stringResource(R.string.continue_button),
                             style = TextStyle(
                                 fontFamily = PlayfairDisplay,
                                 fontWeight = FontWeight.Bold,
@@ -128,18 +143,24 @@ fun PremiumScreen(onClose: () -> Unit) {
                             )
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        FooterLink("Restore")
+                        FooterLink(stringResource(R.string.restore_purchases)) {
+                            viewModel.billingManager.queryPurchases()
+                        }
                         Text("•", color = RetirementColors.AdTextColor)
-                        FooterLink("Terms")
+                        FooterLink(stringResource(R.string.terms_link)) {
+                            uriHandler.openUri("https://valentsytnik.com/terms")
+                        }
                         Text("•", color = RetirementColors.AdTextColor)
-                        FooterLink("Privacy policy")
+                        FooterLink(stringResource(R.string.privacy_policy_link)) {
+                            uriHandler.openUri("https://valentsytnik.com/privacy-policy")
+                        }
                     }
                 }
             }
@@ -199,7 +220,7 @@ fun PremiumOption(title: String, price: String, isSelected: Boolean, onClick: ()
 }
 
 @Composable
-fun FooterLink(text: String) {
+fun FooterLink(text: String, onClick: () -> Unit) {
     Text(
         text = text,
         style = TextStyle(
@@ -207,6 +228,6 @@ fun FooterLink(text: String) {
             fontSize = 12.sp,
             color = RetirementColors.AdTextColor
         ),
-        modifier = Modifier.clickable { }
+        modifier = Modifier.clickable { onClick() }
     )
 }

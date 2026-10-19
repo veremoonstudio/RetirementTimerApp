@@ -1,4 +1,4 @@
-package com.example.retirementtimerapp
+package com.valentsytnik.retirementtimer
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -37,7 +37,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.retirementtimerapp.ui.theme.*
+import com.valentsytnik.retirementtimer.BuildConfig
+import com.valentsytnik.retirementtimer.ui.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -71,7 +72,7 @@ fun WorkTimeScreen(
                             onCheckedChange = { viewModel.toggleMode(it) }
                         )
                     }
-                    
+
                     Box(
                         modifier = Modifier.alpha(if (BuildConfig.IS_PREMIUM) 0f else 1f)
                     ) {
@@ -82,15 +83,14 @@ fun WorkTimeScreen(
                             )
                         }
                     }
-                    
+
                     TopBarItem(label = stringResource(R.string.background)) {
                         IconSquareButton(
                             icon = Icons.Filled.Image,
                             onClick = onNavigateToBackground
                         )
                     }
-                    
-                    // Кнопка меню без подписи, выравниваем по высоте с иконками выше
+
                     Box(modifier = Modifier.padding(top = 12.dp)) {
                         IconButton(onClick = onOpenMenu, modifier = Modifier.size(32.dp)) {
                             Icon(
@@ -128,7 +128,7 @@ fun WorkTimeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.weight(1.4f))
-                
+
                 Text(
                     text = stringResource(R.string.retirement_date),
                     color = RetirementColors.Gold,
@@ -147,9 +147,9 @@ fun WorkTimeScreen(
                     fontSize = 34.sp,
                     textAlign = TextAlign.Center
                 )
-                
+
                 Spacer(Modifier.height(50.dp))
-                
+
                 Text(
                     text = if (uiState.isWorkTimeMode) stringResource(R.string.work_time_left) else stringResource(R.string.total_time_left),
                     color = RetirementColors.Gold,
@@ -159,7 +159,6 @@ fun WorkTimeScreen(
                 )
                 Spacer(Modifier.height(20.dp))
 
-                // ===== COUNTER ROW =====
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     CounterCell(value = uiState.timeLeft.days, label = stringResource(R.string.days))
                     CounterCell(value = uiState.timeLeft.hours, label = stringResource(R.string.hrs))
@@ -237,7 +236,6 @@ fun MarbleBackground(
                     .fillMaxSize()
                     .background(MarbleBackground)
                     .drawBehind {
-                        // Marble Vein Top Left
                         drawOval(
                             brush = Brush.radialGradient(
                                 0.0f to MarbleVeinWhite,
@@ -248,7 +246,6 @@ fun MarbleBackground(
                             topLeft = Offset(-150f, -100f),
                             size = Size(500f, 200f)
                         )
-                        // Marble Vein Top Right
                         drawOval(
                             brush = Brush.radialGradient(
                                 0.0f to Color(0xFFFFFFFF).copy(alpha = 0.05f),

@@ -1,4 +1,4 @@
-package com.example.retirementtimerapp
+package com.valentsytnik.retirementtimer
 
 import android.graphics.Color
 import android.os.Bundle
@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,15 +23,19 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.retirementtimerapp.ui.theme.RetirementTimerAppTheme
+import com.valentsytnik.retirementtimer.BuildConfig
+import com.valentsytnik.retirementtimer.ui.theme.RetirementTimerAppTheme
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
@@ -44,10 +49,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainNavigation() {
+fun MainNavigation(
+    workTimeViewModel: WorkTimeViewModel = viewModel()
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val isPremiumUnlocked by workTimeViewModel.billingManager.isPremiumUnlocked.collectAsState()
+    val isPremium = BuildConfig.IS_PREMIUM || isPremiumUnlocked
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -65,6 +74,7 @@ fun MainNavigation() {
             }
             composable("main") {
                 WorkTimeScreen(
+                    viewModel = workTimeViewModel,
                     onOpenMenu = { navController.navigate("settings") },
                     onNavigateToPremium = { navController.navigate("premium") },
                     onNavigateToBackground = { navController.navigate("background") }
@@ -72,28 +82,30 @@ fun MainNavigation() {
             }
             composable("settings") {
                 SettingsScreen(
+                    viewModel = workTimeViewModel,
                     onBack = { navController.popBackStack() }
                 )
             }
             composable("premium") {
                 PremiumScreen(
+                    viewModel = workTimeViewModel,
                     onClose = { navController.popBackStack() }
                 )
             }
             composable("background") {
                 BackgroundScreen(
+                    viewModel = workTimeViewModel,
                     onBack = { navController.popBackStack() },
                     onNavigateToPremium = { navController.navigate("premium") }
                 )
             }
         }
 
-        // Баннер накладывается СВЕРХУ, не толкая интерфейс
-        if (currentRoute != "splash" && currentRoute != "premium" && !BuildConfig.IS_PREMIUM) {
+        if (currentRoute != "splash" && currentRoute != "premium" && !isPremium) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .navigationBarsPadding() // Над панелью навигации
+                    .navigationBarsPadding()
             ) {
                 BottomAdBanner(height = 100.dp)
             }

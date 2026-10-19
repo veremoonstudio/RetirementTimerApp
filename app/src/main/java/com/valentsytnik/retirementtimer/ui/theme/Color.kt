@@ -1,4 +1,4 @@
-package com.example.retirementtimerapp.ui.theme
+package com.valentsytnik.retirementtimer.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
@@ -14,7 +14,6 @@ val TextGoldMuted = Color(0xFFD4C4A0)
 val MarbleVeinWhite = Color(0xFFFFFFFF).copy(alpha = 0.08f)
 val AdvertisementColor = Color(0x59D4C4A0)
 
-// Reference names from RetirementTimerScreen.kt
 object RetirementColors {
     val Background = Color(0xFF1C1C1E)
     val Gold = Color(0xFFC9A961)

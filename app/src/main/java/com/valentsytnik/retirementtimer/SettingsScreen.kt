@@ -1,4 +1,4 @@
-package com.example.retirementtimerapp
+package com.valentsytnik.retirementtimer
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.*
@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -29,7 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.retirementtimerapp.ui.theme.*
+import com.valentsytnik.retirementtimer.ui.theme.*
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -44,6 +46,7 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
+    val uriHandler = LocalUriHandler.current
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
 
@@ -54,7 +57,7 @@ fun SettingsScreen(
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
-                            text = "SETTINGS",
+                            text = stringResource(R.string.settings_title),
                             style = TextStyle(
                                 fontFamily = PlayfairDisplay,
                                 fontWeight = FontWeight.SemiBold,
@@ -88,7 +91,7 @@ fun SettingsScreen(
             ) {
                 // Work Days
                 item {
-                    SettingsSectionTitle("Work Days")
+                    SettingsSectionTitle(stringResource(R.string.work_days_title))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -123,15 +126,15 @@ fun SettingsScreen(
 
                 // Time Pickers
                 item {
-                    SettingsSectionTitle("Working Hours")
+                    SettingsSectionTitle(stringResource(R.string.working_hours_title))
                     SettingsRow(
-                        label = "Start Time",
+                        label = stringResource(R.string.start_time),
                         value = uiState.startTime.format(DateTimeFormatter.ofPattern("HH:mm")),
                         onClick = { showStartTimePicker = true }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     SettingsRow(
-                        label = "End Time",
+                        label = stringResource(R.string.end_time),
                         value = uiState.endTime.format(DateTimeFormatter.ofPattern("HH:mm")),
                         onClick = { showEndTimePicker = true }
                     )
@@ -139,7 +142,7 @@ fun SettingsScreen(
 
                 // Vacation Hours
                 item {
-                    SettingsSectionTitle("Vacation")
+                    SettingsSectionTitle(stringResource(R.string.vacation_title))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -151,7 +154,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Vacation Hours",
+                            text = stringResource(R.string.vacation_hours),
                             style = TextStyle(fontFamily = CormorantGaramond, fontSize = 16.sp, color = RetirementColors.Cream)
                         )
                         var isFocused by remember { mutableStateOf(false) }
@@ -219,7 +222,7 @@ fun SettingsScreen(
 
                 // Holidays
                 item {
-                    SettingsSectionTitle("Holidays")
+                    SettingsSectionTitle(stringResource(R.string.holidays_title))
                     var showAddHolidayDialog by remember { mutableStateOf(false) }
                     var holidayToEdit by remember { mutableStateOf<Holiday?>(null) }
 
@@ -232,7 +235,6 @@ fun SettingsScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Add New Holiday Button
                         Button(
                             onClick = { showAddHolidayDialog = true },
                             modifier = Modifier.fillMaxWidth(),
@@ -244,7 +246,7 @@ fun SettingsScreen(
                             border = BorderStroke(1.dp, RetirementColors.Gold.copy(alpha = 0.5f))
                         ) {
                             Text(
-                                text = "Add New Holiday",
+                                text = stringResource(R.string.add_new_holiday),
                                 style = TextStyle(fontFamily = CormorantGaramond, fontWeight = FontWeight.Bold)
                             )
                         }
@@ -256,7 +258,7 @@ fun SettingsScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .combinedClickable(
-                                        onClick = { /* Checkbox click handles the toggle */ },
+                                        onClick = { },
                                         onLongClick = { holidayToEdit = holiday }
                                     ),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -312,6 +314,15 @@ fun SettingsScreen(
                     }
                 }
 
+                // Privacy Policy Link
+                item {
+                    SettingsRow(
+                        label = stringResource(R.string.privacy_policy_link),
+                        value = "➔",
+                        onClick = { uriHandler.openUri("https://valentsytnik.com/privacy-policy") }
+                    )
+                }
+
                 item { Spacer(modifier = Modifier.height(110.dp)) }
             }
         }
@@ -345,7 +356,7 @@ fun SettingsScreen(
 @Composable
 fun SettingsSectionTitle(title: String) {
     Text(
-        text = title.uppercase(),
+        text = title,
         style = TextStyle(
             fontFamily = CormorantGaramond,
             fontWeight = FontWeight.Bold,
@@ -391,18 +402,18 @@ fun TimePickerDialog(
     initialMinute: Int
 ) {
     val state = rememberTimePickerState(initialHour = initialHour, initialMinute = initialMinute)
-    
+
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.border(1.dp, RetirementColors.Gold, RoundedCornerShape(28.dp)),
         confirmButton = {
             TextButton(onClick = { onConfirm(state.hour, state.minute) }) {
-                Text("OK", color = RetirementColors.Gold)
+                Text(stringResource(R.string.ok), color = RetirementColors.Gold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("CANCEL", color = RetirementColors.Cream)
+                Text(stringResource(R.string.cancel), color = RetirementColors.Cream)
             }
         },
         containerColor = RetirementColors.Background,
@@ -449,18 +460,18 @@ fun AddHolidayDialog(
                 onClick = { if (name.isNotBlank()) onConfirm(name, selectedDate.monthValue, selectedDate.dayOfMonth) },
                 enabled = name.isNotBlank()
             ) {
-                Text("ADD", color = RetirementColors.Gold)
+                Text(stringResource(R.string.add), color = RetirementColors.Gold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("CANCEL", color = RetirementColors.Cream)
+                Text(stringResource(R.string.cancel), color = RetirementColors.Cream)
             }
         },
         containerColor = RetirementColors.Background,
         title = {
             Text(
-                "Add New Holiday",
+                stringResource(R.string.add_new_holiday),
                 style = TextStyle(fontFamily = PlayfairDisplay, color = RetirementColors.Gold)
             )
         },
@@ -469,7 +480,7 @@ fun AddHolidayDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Holiday Name", color = RetirementColors.Gold.copy(alpha = 0.7f)) },
+                    label = { Text(stringResource(R.string.holiday_name), color = RetirementColors.Gold.copy(alpha = 0.7f)) },
                     textStyle = TextStyle(color = RetirementColors.Cream),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = RetirementColors.Gold,
@@ -478,9 +489,9 @@ fun AddHolidayDialog(
                     ),
                     singleLine = true
                 )
-                
+
                 SettingsRow(
-                    label = "Date",
+                    label = stringResource(R.string.date_label),
                     value = selectedDate.format(DateTimeFormatter.ofPattern("MMMM d")),
                     onClick = { showDatePicker = true }
                 )
@@ -499,12 +510,12 @@ fun AddHolidayDialog(
                     }
                     showDatePicker = false
                 }) {
-                    Text("OK", color = RetirementColors.Gold)
+                    Text(stringResource(R.string.ok), color = RetirementColors.Gold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("CANCEL", color = RetirementColors.Cream)
+                    Text(stringResource(R.string.cancel), color = RetirementColors.Cream)
                 }
             }
         ) {
@@ -539,7 +550,7 @@ fun EditHolidayDialog(
         containerColor = RetirementColors.Background,
         title = {
             Text(
-                "Edit Holiday",
+                stringResource(R.string.edit_holiday),
                 style = TextStyle(fontFamily = PlayfairDisplay, color = RetirementColors.Gold)
             )
         },
@@ -552,7 +563,7 @@ fun EditHolidayDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Holiday Name", color = RetirementColors.Gold.copy(alpha = 0.7f)) },
+                    label = { Text(stringResource(R.string.holiday_name), color = RetirementColors.Gold.copy(alpha = 0.7f)) },
                     textStyle = TextStyle(color = RetirementColors.Cream, fontSize = 16.sp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = RetirementColors.Gold,
@@ -564,7 +575,7 @@ fun EditHolidayDialog(
                 )
 
                 SettingsRow(
-                    label = "Date",
+                    label = stringResource(R.string.date_label),
                     value = selectedDate.format(DateTimeFormatter.ofPattern("MMMM d")),
                     onClick = { showDatePicker = true }
                 )
@@ -583,16 +594,16 @@ fun EditHolidayDialog(
                     )
                 }
             ) {
-                Text("UPDATE", color = RetirementColors.Gold)
+                Text(stringResource(R.string.update), color = RetirementColors.Gold)
             }
         },
         dismissButton = {
             Row {
                 TextButton(onClick = { onDelete(holiday) }) {
-                    Text("DELETE", color = Color(0xFFCF6679))
+                    Text(stringResource(R.string.delete), color = Color(0xFFCF6679))
                 }
                 TextButton(onClick = onDismiss) {
-                    Text("CANCEL", color = RetirementColors.Cream)
+                    Text(stringResource(R.string.cancel), color = RetirementColors.Cream)
                 }
             }
         }
@@ -611,12 +622,12 @@ fun EditHolidayDialog(
                     }
                     showDatePicker = false
                 }) {
-                    Text("OK", color = RetirementColors.Gold)
+                    Text(stringResource(R.string.ok), color = RetirementColors.Gold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("CANCEL", color = RetirementColors.Cream)
+                    Text(stringResource(R.string.cancel), color = RetirementColors.Cream)
                 }
             }
         ) {

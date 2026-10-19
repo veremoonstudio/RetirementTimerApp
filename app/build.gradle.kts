@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.retirementtimerapp"
+    namespace = "com.valentsytnik.retirementtimer"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.retirementtimerapp"
+        applicationId = "com.valentsytnik.retirementtimer"
         minSdk = 26
         targetSdk = 37
         versionCode = 1
@@ -36,9 +36,13 @@ android {
 
     buildTypes {
         release {
-            optimization {
-                enable = false
-            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            isCrunchPngs = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "src/main/keepRules/rules.keep"
+            )
         }
     }
     compileOptions {
@@ -69,6 +73,8 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.play.services.ads)
+    implementation(libs.billing.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
