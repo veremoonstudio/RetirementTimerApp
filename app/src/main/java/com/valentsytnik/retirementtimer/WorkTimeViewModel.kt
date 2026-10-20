@@ -23,25 +23,7 @@ import java.util.Locale
 
 private val Context.dataStore by preferencesDataStore(name = "work_time_settings")
 
-@Serializable
-private data class SettingsData(
-    val isWorkTimeMode: Boolean = true,
-    val retirementDateEpoch: Long,
-    val workDays: List<DayOfWeek>,
-    val startTimeStr: String,
-    val endTimeStr: String,
-    val vacationHours: Int,
-    val holidays: List<SavedHoliday>,
-    val selectedBackground: String = "None"
-)
 
-@Serializable
-private data class SavedHoliday(
-    val name: String,
-    val month: Int,
-    val day: Int,
-    val isEnabled: Boolean
-)
 
 class WorkTimeViewModel(application: Application) : AndroidViewModel(application) {
     private val SETTINGS_KEY = stringPreferencesKey("all_settings")
