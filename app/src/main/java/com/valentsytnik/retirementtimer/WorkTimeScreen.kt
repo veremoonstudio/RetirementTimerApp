@@ -25,6 +25,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -202,7 +204,6 @@ fun getBackgroundDrawableRes(name: String): Int {
     return when (name) {
         "Palm Beach" -> R.drawable.bg_palm_beach
         "Mountain Road" -> R.drawable.bg_mountain_road
-        "Golf Course" -> R.drawable.bg_golf_course
         "Lake" -> R.drawable.bg_lake
         else -> 0
     }
@@ -228,7 +229,7 @@ fun MarbleBackground(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.55f))
+                    .background(Color.Black.copy(alpha = 0.35f))
             )
         } else {
             Box(

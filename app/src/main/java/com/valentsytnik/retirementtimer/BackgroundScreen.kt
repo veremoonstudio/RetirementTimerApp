@@ -1,5 +1,6 @@
 package com.valentsytnik.retirementtimer
 
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,7 +18,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -42,7 +47,7 @@ fun BackgroundScreen(
     val isPremiumUnlocked by viewModel.billingManager.isPremiumUnlocked.collectAsState()
     val isPremium = BuildConfig.IS_PREMIUM || isPremiumUnlocked
 
-    val backgrounds = listOf("None", "Palm Beach", "Mountain Road", "Golf Course", "Lake")
+    val backgrounds = listOf("None", "Palm Beach", "Mountain Road", "Lake")
     val unlockedBackgrounds = remember(isPremium) {
         if (isPremium) backgrounds.toSet() else setOf("None")
     }
@@ -131,35 +136,48 @@ fun BackgroundScreen(
 }
 
 @Composable
+fun rememberThumbnailPainter(resId: Int): Painter? {
+    val context = LocalContext.current
+    val bitmap = remember(resId) {
+        if (resId == 0) return@remember null
+        try {
+            val options = BitmapFactory.Options().apply {
+                inSampleSize = 4
+            }
+            val stream = context.resources.openRawResource(resId)
+            val bmp = BitmapFactory.decodeStream(stream, null, options)
+            stream.close()
+            bmp?.asImageBitmap()
+        } catch (_: Throwable) {
+            null
+        }
+    }
+    return bitmap?.let { BitmapPainter(it) }
+}
+
+@Composable
 fun BackgroundCard(
     name: String,
     isSelected: Boolean,
     isLocked: Boolean,
     onClick: () -> Unit
 ) {
-    val context = LocalContext.current
-    val drawableName = remember(name) {
-        when (name) {
-            "Palm Beach" -> "bg_palm_beach"
-            "Mountain Road" -> "bg_mountain_road"
-            "Golf Course" -> "bg_golf_course"
-            "Lake" -> "bg_lake"
-            else -> ""
-        }
-    }
-    val imageResId = remember(drawableName) {
-        if (drawableName.isNotEmpty()) {
-            context.resources.getIdentifier(drawableName, "drawable", context.packageName)
-        } else 0
-    }
+    val imageResId = remember(name) { getBackgroundDrawableRes(name) }
+    val cardPainter = rememberThumbnailPainter(imageResId)
 
     val displayName = when (name) {
         "None" -> stringResource(R.string.bg_none)
         "Palm Beach" -> stringResource(R.string.bg_palm_beach)
         "Mountain Road" -> stringResource(R.string.bg_mountain_road)
-        "Golf Course" -> stringResource(R.string.bg_golf_course)
         "Lake" -> stringResource(R.string.bg_lake)
         else -> name
+    }
+
+    val gradientColors = when (name) {
+        "Palm Beach" -> listOf(Color(0xFFD4A373), Color(0xFFFAEDCD))
+        "Mountain Road" -> listOf(Color(0xFF4A4E69), Color(0xFFC9ADA7))
+        "Lake" -> listOf(Color(0xFF1D3557), Color(0xFFA8DADC))
+        else -> listOf(Color(0xFF262628), Color(0xFF1C1C1E))
     }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -167,7 +185,13 @@ fun BackgroundCard(
             modifier = Modifier
                 .aspectRatio(0.55f)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color.White.copy(alpha = 0.05f))
+                .then(
+                    if (name == "None") {
+                        Modifier.background(Brush.verticalGradient(gradientColors))
+                    } else {
+                        Modifier.background(Color.Black)
+                    }
+                )
                 .border(
                     width = if (isSelected) 2.dp else 1.dp,
                     color = if (isSelected) RetirementColors.Gold else RetirementColors.Gold.copy(alpha = 0.2f),
@@ -181,23 +205,18 @@ fun BackgroundCard(
                     text = displayName,
                     style = TextStyle(
                         fontFamily = PlayfairDisplay,
-                        fontSize = 18.sp,
-                        color = RetirementColors.Cream
+                        fontSize = 16.sp,
+                        color = RetirementColors.Cream,
+                        fontWeight = FontWeight.Bold
                     )
                 )
             } else {
-                if (imageResId != 0) {
+                if (cardPainter != null) {
                     Image(
-                        painter = painterResource(id = imageResId),
-                        contentDescription = name,
+                        painter = cardPainter,
+                        contentDescription = displayName,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Gray.copy(alpha = 0.2f))
                     )
                 }
 
@@ -205,14 +224,30 @@ fun BackgroundCard(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.4f)),
+                            .background(Color.Black.copy(alpha = 0.5f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.MilitaryTech,
                             contentDescription = "Locked",
                             tint = RetirementColors.Gold,
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+                } else if (isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "ACTIVE",
+                            style = TextStyle(
+                                color = RetirementColors.Gold,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         )
                     }
                 }

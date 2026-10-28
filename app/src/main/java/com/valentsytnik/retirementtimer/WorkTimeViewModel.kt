@@ -22,6 +22,7 @@ import java.time.LocalTime
 import java.util.Locale
 
 private val Context.dataStore by preferencesDataStore(name = "work_time_settings")
+private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
 
 
@@ -45,7 +46,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
                 .collect { json ->
                     if (json != null) {
                         try {
-                            val data = Json.decodeFromString<SettingsData>(json)
+                            val data = jsonParser.decodeFromString<SettingsData>(json)
                             _uiState.update {
                                 it.copy(
                                     isWorkTimeMode = data.isWorkTimeMode,
@@ -115,7 +116,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         )
         viewModelScope.launch {
             getApplication<Application>().dataStore.edit { preferences ->
-                preferences[SETTINGS_KEY] = Json.encodeToString(data)
+                preferences[SETTINGS_KEY] = jsonParser.encodeToString(data)
             }
             try {
                 RetirementGlanceWidget().updateAll(getApplication())

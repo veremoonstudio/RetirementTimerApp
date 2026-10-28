@@ -12,11 +12,11 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
@@ -52,7 +52,11 @@ class WidgetRefreshCallback : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-        RetirementGlanceWidget().update(context, glanceId)
+        try {
+            RetirementGlanceWidget().update(context, glanceId)
+        } catch (e: Throwable) {
+            // Ignore errors
+        }
     }
 }
 
@@ -61,18 +65,27 @@ class RetirementGlanceWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val json = context.dataStore.data.firstOrNull()?.get(SETTINGS_KEY)
         var settings = SettingsData()
-        if (json != null) {
-            try {
+        try {
+            val json = context.dataStore.data.firstOrNull()?.get(SETTINGS_KEY)
+            if (json != null) {
                 settings = jsonParser.decodeFromString<SettingsData>(json)
-            } catch (e: Exception) {
-                // Keep default settings
             }
+        } catch (e: Throwable) {
+            // Safe fallback
         }
 
-        val timeLeft = calculateWidgetTimeLeft(settings)
-        val retirementDate = if (settings.retirementDateEpoch > 0) LocalDate.ofEpochDay(settings.retirementDateEpoch) else LocalDate.now().plusYears(5)
+        val timeLeft = try {
+            calculateWidgetTimeLeft(settings)
+        } catch (e: Throwable) {
+            TimeLeftData("00", "00", "00", "00")
+        }
+
+        val retirementDate = try {
+            if (settings.retirementDateEpoch > 0) LocalDate.ofEpochDay(settings.retirementDateEpoch) else LocalDate.now().plusYears(5)
+        } catch (e: Throwable) {
+            LocalDate.now().plusYears(5)
+        }
 
         provideContent {
             GlanceTheme {
@@ -88,7 +101,7 @@ class RetirementGlanceWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun WidgetContent(
+    internal fun WidgetContent(
         retirementDate: LocalDate,
         days: String,
         hours: String,
@@ -100,135 +113,50 @@ class RetirementGlanceWidget : GlanceAppWidget() {
         val bgColor = ColorProvider(day = Color(0xFF1C1C1E), night = Color(0xFF1C1C1E))
 
         val currentSize = LocalSize.current
-        val showSeconds = currentSize.width >= 310.dp
-        val widgetHeight = currentSize.height
+        val width = currentSize.width
 
-        if (widgetHeight < 90.dp) {
-            // 1 CELL HIGH MODE: Single compact row
-            Box(
-                modifier = GlanceModifier
-                    .fillMaxSize()
-                    .background(bgColor)
-                    .cornerRadius(12.dp)
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                    .clickable(actionStartActivity<MainActivity>()),
-                contentAlignment = Alignment.Center
+        val showSeconds = width >= 180.dp
+
+        Box(
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .background(bgColor)
+                .cornerRadius(12.dp)
+                .padding(horizontal = 4.dp, vertical = 2.dp)
+                .clickable(actionRunCallback<WidgetRefreshCallback>()),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = GlanceModifier.fillMaxSize()
             ) {
+                Text(
+                    text = "RETIREMENT: " + retirementDate.format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)),
+                    style = TextStyle(
+                        color = goldColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    ),
+                    maxLines = 1
+                )
+
+                Spacer(GlanceModifier.height(1.dp))
+
                 Row(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = GlanceModifier.fillMaxWidth()
                 ) {
                     CounterWidgetCellCompact(value = days, label = "DAYS", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                    Spacer(GlanceModifier.width(6.dp))
+                    Spacer(GlanceModifier.width(3.dp))
                     CounterWidgetCellCompact(value = hours, label = "HRS", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                    Spacer(GlanceModifier.width(6.dp))
+                    Spacer(GlanceModifier.width(3.dp))
                     CounterWidgetCellCompact(value = minutes, label = "MIN", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
                     if (showSeconds) {
-                        Spacer(GlanceModifier.width(6.dp))
+                        Spacer(GlanceModifier.width(3.dp))
                         CounterWidgetCellCompact(value = seconds, label = "SEC", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                    }
-                }
-            }
-        } else if (widgetHeight < 140.dp) {
-            // 2 CELLS HIGH MODE: Compact header + counter row
-            Box(
-                modifier = GlanceModifier
-                    .fillMaxSize()
-                    .background(bgColor)
-                    .cornerRadius(14.dp)
-                    .padding(10.dp)
-                    .clickable(actionStartActivity<MainActivity>()),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = GlanceModifier.fillMaxSize()
-                ) {
-                    Text(
-                        text = "RETIREMENT: " + retirementDate.format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)),
-                        style = TextStyle(
-                            color = goldColor,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                    )
-
-                    Spacer(GlanceModifier.height(6.dp))
-
-                    Row(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = GlanceModifier.fillMaxWidth()
-                    ) {
-                        CounterWidgetCellMedium(value = days, label = "DAYS", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                        Spacer(GlanceModifier.width(6.dp))
-                        CounterWidgetCellMedium(value = hours, label = "HRS", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                        Spacer(GlanceModifier.width(6.dp))
-                        CounterWidgetCellMedium(value = minutes, label = "MIN", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                        if (showSeconds) {
-                            Spacer(GlanceModifier.width(6.dp))
-                            CounterWidgetCellMedium(value = seconds, label = "SEC", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                        }
-                    }
-                }
-            }
-        } else {
-            // 3+ CELLS HIGH MODE: Full large display
-            Box(
-                modifier = GlanceModifier
-                    .fillMaxSize()
-                    .background(bgColor)
-                    .cornerRadius(18.dp)
-                    .padding(16.dp)
-                    .clickable(actionStartActivity<MainActivity>()),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = GlanceModifier.fillMaxSize()
-                ) {
-                    Text(
-                        text = "RETIREMENT COUNTDOWN",
-                        style = TextStyle(
-                            color = goldColor,
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                    )
-
-                    Spacer(GlanceModifier.height(8.dp))
-
-                    Text(
-                        text = retirementDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.US)),
-                        style = TextStyle(
-                            color = creamColor,
-                            fontSize = 34.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                    )
-
-                    Spacer(GlanceModifier.height(18.dp))
-
-                    Row(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = GlanceModifier.fillMaxWidth()
-                    ) {
-                        CounterWidgetCellLarge(value = days, label = "DAYS", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                        Spacer(GlanceModifier.width(8.dp))
-                        CounterWidgetCellLarge(value = hours, label = "HRS", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                        Spacer(GlanceModifier.width(8.dp))
-                        CounterWidgetCellLarge(value = minutes, label = "MIN", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                        if (showSeconds) {
-                            Spacer(GlanceModifier.width(8.dp))
-                            CounterWidgetCellLarge(value = seconds, label = "SEC", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                        }
                     }
                 }
             }
@@ -244,105 +172,34 @@ class RetirementGlanceWidget : GlanceAppWidget() {
         modifier: GlanceModifier = GlanceModifier
     ) {
         val cardBg = ColorProvider(day = Color(0xFF262628), night = Color(0xFF262628))
-        Row(
+        Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalAlignment = Alignment.CenterVertically,
             modifier = modifier
                 .background(cardBg)
                 .cornerRadius(8.dp)
-                .padding(horizontal = 6.dp, vertical = 4.dp)
+                .padding(horizontal = 2.dp, vertical = 2.dp)
         ) {
             Text(
                 text = value,
                 style = TextStyle(
                     color = creamColor,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
                 )
             )
-            Spacer(GlanceModifier.width(4.dp))
             Text(
                 text = label,
                 style = TextStyle(
                     color = goldColor,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
                 )
             )
         }
     }
 
-    @Composable
-    private fun CounterWidgetCellMedium(
-        value: String,
-        label: String,
-        goldColor: GlanceColorProvider,
-        creamColor: GlanceColorProvider,
-        modifier: GlanceModifier = GlanceModifier
-    ) {
-        val cardBg = ColorProvider(day = Color(0xFF262628), night = Color(0xFF262628))
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = modifier
-                .background(cardBg)
-                .cornerRadius(10.dp)
-                .padding(horizontal = 6.dp, vertical = 8.dp)
-        ) {
-            Text(
-                text = value,
-                style = TextStyle(
-                    color = creamColor,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-            Spacer(GlanceModifier.height(2.dp))
-            Text(
-                text = label,
-                style = TextStyle(
-                    color = goldColor,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-        }
-    }
 
-    @Composable
-    private fun CounterWidgetCellLarge(
-        value: String,
-        label: String,
-        goldColor: GlanceColorProvider,
-        creamColor: GlanceColorProvider,
-        modifier: GlanceModifier = GlanceModifier
-    ) {
-        val cardBg = ColorProvider(day = Color(0xFF262628), night = Color(0xFF262628))
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = modifier
-                .background(cardBg)
-                .cornerRadius(12.dp)
-                .padding(horizontal = 8.dp, vertical = 14.dp)
-        ) {
-            Text(
-                text = value,
-                style = TextStyle(
-                    color = creamColor,
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-            Spacer(GlanceModifier.height(4.dp))
-            Text(
-                text = label,
-                style = TextStyle(
-                    color = goldColor,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-        }
-    }
 }
