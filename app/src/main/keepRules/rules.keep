@@ -11,8 +11,8 @@
 }
 
 # Keep DataStore & SettingsData models
--keep class com.valentsytnik.retirementtimer.SettingsData { *; }
--keep class com.valentsytnik.retirementtimer.SavedHoliday { *; }
+-keep class com.veremoonstudio.retirementtimer.SettingsData { *; }
+-keep class com.veremoonstudio.retirementtimer.SavedHoliday { *; }
 
 # Google Play Billing & AdMob
 -keep class com.android.billingclient.api.** { *; }

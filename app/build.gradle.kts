@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.valentsytnik.retirementtimer"
+    namespace = "com.veremoonstudio.retirementtimer"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.valentsytnik.retirementtimer"
+        applicationId = "com.veremoonstudio.retirementtimer"
         minSdk = 26
         targetSdk = 37
         versionCode = 1
@@ -74,6 +74,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.play.services.ads)
+    implementation(libs.user.messaging.platform)
     implementation(libs.billing.ktx)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)

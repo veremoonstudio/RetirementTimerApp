@@ -52,4 +52,8 @@
     <string name="bg_lake">Lake</string>
     <string name="tap_to_unlock">Tap to unlock new backgrounds!</string>
     <string name="widget_description">Shows retirement countdown on home screen</string>
+
+    <!-- Legal URLs -->
+    <string name="privacy_policy_url">https://veremoonstudio.github.io/RetirementTimerApp/privacy-policy.html</string>
+    <string name="terms_url">https://veremoonstudio.github.io/RetirementTimerApp/terms.html</string>
 </resources>
