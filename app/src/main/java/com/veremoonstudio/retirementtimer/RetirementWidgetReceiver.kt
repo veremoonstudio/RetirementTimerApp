@@ -3,9 +3,9 @@ package com.veremoonstudio.retirementtimer
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 
@@ -16,8 +16,15 @@ class RetirementWidgetReceiver : GlanceAppWidgetReceiver() {
         fun scheduleNextMinuteAlarm(context: Context) {
             try {
                 val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+                val appWidgetManager = AppWidgetManager.getInstance(context)
+                val appWidgetIds = appWidgetManager.getAppWidgetIds(
+                    ComponentName(context, RetirementWidgetReceiver::class.java)
+                )
+                if (appWidgetIds.isEmpty()) return
+
                 val intent = Intent(context, RetirementWidgetReceiver::class.java).apply {
                     action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
                 }
                 val pendingIntent = PendingIntent.getBroadcast(
                     context,
@@ -28,15 +35,7 @@ class RetirementWidgetReceiver : GlanceAppWidgetReceiver() {
                 val now = System.currentTimeMillis()
                 val nextMinute = now + (60000 - (now % 60000)) + 100L
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (alarmManager.canScheduleExactAlarms()) {
-                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC, nextMinute, pendingIntent)
-                    } else {
-                        alarmManager.set(AlarmManager.RTC, nextMinute, pendingIntent)
-                    }
-                } else {
-                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC, nextMinute, pendingIntent)
-                }
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
             } catch (_: Throwable) {}
         }
     }

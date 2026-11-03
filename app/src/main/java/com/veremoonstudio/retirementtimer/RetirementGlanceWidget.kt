@@ -1,6 +1,8 @@
 package com.veremoonstudio.retirementtimer
 
 import android.content.Context
+import android.content.Intent
+import android.os.SystemClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -163,13 +165,26 @@ fun calculateWidgetTimeLeft(settings: SettingsData): TimeLeftData {
     return TimeLeftData(days = String.format(Locale.US, "%02d", days), hours = String.format(Locale.US, "%02d", hours), minutes = String.format(Locale.US, "%02d", minutes), seconds = String.format(Locale.US, "%02d", seconds))
 }
 
-class WidgetRefreshCallback : ActionCallback {
+class WidgetClickCallback : ActionCallback {
     override suspend fun onAction(
         context: Context,
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
         try {
+            val prefs = context.getSharedPreferences("widget_click_prefs", Context.MODE_PRIVATE)
+            val now = SystemClock.elapsedRealtime()
+            val lastClickTime = prefs.getLong("last_click_time", 0L)
+
+            if (lastClickTime > 0L && (now - lastClickTime) in 1L..500L) {
+                prefs.edit().putLong("last_click_time", 0L).apply()
+                val intent = Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
+                context.startActivity(intent)
+            } else {
+                prefs.edit().putLong("last_click_time", now).apply()
+            }
             RetirementGlanceWidget().updateAll(context)
         } catch (_: Throwable) {
         }
@@ -280,7 +295,7 @@ class RetirementGlanceWidget : GlanceAppWidget() {
                     .background(bgColor)
                     .cornerRadius(12.dp)
                     .padding(horizontal = 4.dp, vertical = 2.dp)
-                    .clickable(actionRunCallback<WidgetRefreshCallback>()),
+                    .clickable(actionRunCallback<WidgetClickCallback>()),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
