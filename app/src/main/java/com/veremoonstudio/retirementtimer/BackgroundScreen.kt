@@ -47,7 +47,7 @@ fun BackgroundScreen(
     val isPremiumUnlocked by viewModel.billingManager.isPremiumUnlocked.collectAsState()
     val isPremium = BuildConfig.IS_PREMIUM || isPremiumUnlocked
 
-    val backgrounds = listOf("None", "Palm Beach", "Mountain Road", "Lake")
+    val backgrounds = listOf("None", "Palm Beach", "Mountain Road", "Golf Course", "Lake")
     val unlockedBackgrounds = remember(isPremium) {
         if (isPremium) backgrounds.toSet() else setOf("None")
     }

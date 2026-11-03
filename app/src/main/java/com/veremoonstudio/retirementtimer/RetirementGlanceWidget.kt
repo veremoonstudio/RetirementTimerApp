@@ -1,34 +1,30 @@
 package com.veremoonstudio.retirementtimer
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Typeface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.res.ResourcesCompat
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
-import androidx.glance.Image
-import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.color.ColorProvider
 import androidx.glance.layout.Alignment
@@ -41,70 +37,130 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
+import androidx.glance.text.FontFamily as GlanceFontFamily
+import androidx.glance.text.FontWeight as GlanceFontWeight
+import androidx.glance.text.Text
+import androidx.glance.text.TextAlign
+import androidx.glance.text.TextStyle
 import com.veremoonstudio.retirementtimer.R
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import java.time.Duration
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val Context.dataStore by preferencesDataStore(name = "work_time_settings")
 private val SETTINGS_KEY = stringPreferencesKey("all_settings")
 private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
-fun renderTextToBitmap(
-    context: Context,
-    text: String,
-    fontSizeSp: Float,
-    colorInt: Int,
-    fontResId: Int,
-    isBold: Boolean = false
-): Bitmap {
-    val density = context.resources.displayMetrics.density
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = colorInt
-        textSize = fontSizeSp * density
-        try {
-            val baseTypeface = ResourcesCompat.getFont(context, fontResId)
-            typeface = if (isBold && baseTypeface != null) {
-                Typeface.create(baseTypeface, Typeface.BOLD)
-            } else {
-                baseTypeface
+fun calculateWidgetTimeLeft(settings: SettingsData): TimeLeftData {
+    val now = LocalDateTime.now()
+    val retirementDate = if (settings.retirementDateEpoch > 0L) LocalDate.ofEpochDay(settings.retirementDateEpoch) else LocalDate.now().plusYears(5)
+
+    if (!settings.isWorkTimeMode) {
+        val target = retirementDate.atTime(LocalTime.MAX)
+        if (now.isAfter(target)) {
+            val duration = Duration.between(target, now)
+            val days = duration.toDays()
+            val hours = duration.toHours() % 24
+            val minutes = duration.toMinutes() % 60
+            val seconds = duration.seconds % 60
+            val formattedDays = if (days == 0L) "\u221200" else "\u2212${String.format(Locale.US, "%02d", days)}"
+            return TimeLeftData(days = formattedDays, hours = String.format(Locale.US, "%02d", hours), minutes = String.format(Locale.US, "%02d", minutes), seconds = String.format(Locale.US, "%02d", seconds))
+        }
+        val duration = Duration.between(now, target)
+        val days = duration.toDays()
+        val hours = duration.toHours() % 24
+        val minutes = duration.toMinutes() % 60
+        val seconds = duration.seconds % 60
+        return TimeLeftData(days = String.format(Locale.US, "%02d", days), hours = String.format(Locale.US, "%02d", hours), minutes = String.format(Locale.US, "%02d", minutes), seconds = String.format(Locale.US, "%02d", seconds))
+    }
+
+    val startTime = try { LocalTime.parse(settings.startTimeStr) } catch (_: Exception) { LocalTime.of(9, 0) }
+    val endTime = try { LocalTime.parse(settings.endTimeStr) } catch (_: Exception) { LocalTime.of(18, 0) }
+    val workSecondsPerDay = Duration.between(startTime, endTime).seconds
+    if (workSecondsPerDay <= 0) return TimeLeftData("00", "00", "00", "00")
+
+    val targetDateTime = retirementDate.atTime(endTime)
+    val today = now.toLocalDate()
+    val workDaysSet = settings.workDays.toSet()
+
+    if (now.isAfter(targetDateTime)) {
+        var pastWorkDays = 0L
+        var cursor = retirementDate.plusDays(1)
+        val maxCursor = today.minusDays(1)
+        var iterations = 0
+        while (!cursor.isAfter(maxCursor) && iterations < 3650) {
+            if (cursor.dayOfWeek in workDaysSet && settings.holidays.none { it.isEnabled && it.month == cursor.monthValue && it.day == cursor.dayOfMonth }) {
+                pastWorkDays++
             }
-        } catch (_: Throwable) {}
+            cursor = cursor.plusDays(1)
+            iterations++
+        }
+
+        var todaySeconds = 0L
+        if (today.dayOfWeek in workDaysSet && !today.isEqual(retirementDate) && settings.holidays.none { it.isEnabled && it.month == today.monthValue && it.day == today.dayOfMonth }) {
+            val nowTime = now.toLocalTime()
+            if (nowTime.isAfter(startTime)) {
+                val effectiveEnd = if (nowTime.isAfter(endTime)) endTime else nowTime
+                todaySeconds = Duration.between(startTime, effectiveEnd).seconds
+            }
+        }
+
+        var totalPastWorkSeconds = (pastWorkDays * workSecondsPerDay) + todaySeconds
+        if (totalPastWorkSeconds < 0) totalPastWorkSeconds = 0
+
+        val daysPast = totalPastWorkSeconds / workSecondsPerDay
+        var remainder = totalPastWorkSeconds % workSecondsPerDay
+
+        val hoursPast = remainder / 3600
+        remainder %= 3600
+        val minutesPast = remainder / 60
+        val secondsPast = remainder % 60
+
+        val formattedDays = if (daysPast == 0L) "\u221200" else "\u2212${String.format(Locale.US, "%02d", daysPast)}"
+
+        return TimeLeftData(days = formattedDays, hours = String.format(Locale.US, "%02d", hoursPast), minutes = String.format(Locale.US, "%02d", minutesPast), seconds = String.format(Locale.US, "%02d", secondsPast))
     }
 
-    val fontMetrics = paint.fontMetrics
-    val textWidth = paint.measureText(text)
-    val width = (textWidth + 8 * density).toInt().coerceAtLeast(1)
-    val height = ((fontMetrics.bottom - fontMetrics.top) + 2 * density).toInt().coerceAtLeast(1)
-
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-    val x = (width - textWidth) / 2f
-    val y = -fontMetrics.top + 1 * density
-    canvas.drawText(text, x, y, paint)
-
-    return bitmap
-}
-
-@Composable
-fun RenderGlanceText(
-    text: String,
-    fontSizeSp: Float,
-    color: Color,
-    fontResId: Int,
-    isBold: Boolean = false
-) {
-    val context = LocalContext.current
-    val colorInt = color.toArgb()
-    val bitmap = remember(text, fontSizeSp, colorInt, fontResId, isBold) {
-        renderTextToBitmap(context, text, fontSizeSp, colorInt, fontResId, isBold)
+    var futureWorkDays = 0L
+    var cursor = today.plusDays(1)
+    var iterations = 0
+    while (!cursor.isAfter(retirementDate) && iterations < 36500) {
+        if (cursor.dayOfWeek in workDaysSet && settings.holidays.none { it.isEnabled && it.month == cursor.monthValue && it.day == cursor.dayOfMonth }) {
+            futureWorkDays++
+        }
+        cursor = cursor.plusDays(1)
+        iterations++
     }
-    Image(
-        provider = ImageProvider(bitmap),
-        contentDescription = text
-    )
+
+    var todaySeconds = 0L
+    if (today.dayOfWeek in workDaysSet && settings.holidays.none { it.isEnabled && it.month == today.monthValue && it.day == today.dayOfMonth }) {
+        val nowTime = now.toLocalTime()
+        if (nowTime.isBefore(endTime)) {
+            val effectiveStart = if (nowTime.isBefore(startTime)) startTime else nowTime
+            todaySeconds = Duration.between(effectiveStart, endTime).seconds
+        }
+    }
+
+    var totalWorkSeconds = (futureWorkDays * workSecondsPerDay) + todaySeconds
+    totalWorkSeconds -= (settings.vacationHours * 3600L)
+    if (totalWorkSeconds < 0) totalWorkSeconds = 0
+
+    val days = totalWorkSeconds / workSecondsPerDay
+    var remainder = totalWorkSeconds % workSecondsPerDay
+
+    val hours = remainder / 3600
+    remainder %= 3600
+    val minutes = remainder / 60
+    val seconds = remainder % 60
+
+    return TimeLeftData(days = String.format(Locale.US, "%02d", days), hours = String.format(Locale.US, "%02d", hours), minutes = String.format(Locale.US, "%02d", minutes), seconds = String.format(Locale.US, "%02d", seconds))
 }
 
 class WidgetRefreshCallback : ActionCallback {
@@ -114,7 +170,7 @@ class WidgetRefreshCallback : ActionCallback {
         parameters: ActionParameters
     ) {
         try {
-            RetirementGlanceWidget().update(context, glanceId)
+            RetirementGlanceWidget().updateAll(context)
         } catch (_: Throwable) {
         }
     }
@@ -134,6 +190,10 @@ class RetirementGlanceWidget : GlanceAppWidget() {
         } catch (_: Throwable) {
         }
 
+        try {
+            RetirementWidgetReceiver.scheduleNextMinuteAlarm(context)
+        } catch (_: Throwable) {}
+
         val timeLeft = try {
             calculateWidgetTimeLeft(settings)
         } catch (_: Throwable) {
@@ -141,19 +201,51 @@ class RetirementGlanceWidget : GlanceAppWidget() {
         }
 
         val retirementDate = try {
-            if (settings.retirementDateEpoch > 0) LocalDate.ofEpochDay(settings.retirementDateEpoch) else LocalDate.now().plusYears(5)
+            if (settings.retirementDateEpoch > 0L) LocalDate.ofEpochDay(settings.retirementDateEpoch) else LocalDate.now().plusYears(5)
         } catch (_: Throwable) {
             LocalDate.now().plusYears(5)
         }
 
         provideContent {
+            val currentSettings = remember { mutableStateOf(settings) }
+            val currentTimeLeft = remember { mutableStateOf(timeLeft) }
+            val currentRetirementDate = remember { mutableStateOf(retirementDate) }
+
+            LaunchedEffect(Unit) {
+                launch {
+                    try {
+                        context.dataStore.data.collect { prefs ->
+                            val json = prefs[SETTINGS_KEY]
+                            if (json != null) {
+                                val newSettings = jsonParser.decodeFromString<SettingsData>(json)
+                                currentSettings.value = newSettings
+                                currentRetirementDate.value = if (newSettings.retirementDateEpoch > 0L) {
+                                    LocalDate.ofEpochDay(newSettings.retirementDateEpoch)
+                                } else {
+                                    LocalDate.now().plusYears(5)
+                                }
+                            }
+                        }
+                    } catch (_: Throwable) {}
+                }
+
+                while (isActive) {
+                    currentTimeLeft.value = try {
+                        calculateWidgetTimeLeft(currentSettings.value)
+                    } catch (_: Throwable) {
+                        TimeLeftData("00", "00", "00", "00")
+                    }
+                    delay(1000)
+                }
+            }
+
             GlanceTheme {
                 WidgetContent(
-                    retirementDate = retirementDate,
-                    days = timeLeft.days,
-                    hours = timeLeft.hours,
-                    minutes = timeLeft.minutes,
-                    seconds = timeLeft.seconds
+                    retirementDate = currentRetirementDate.value,
+                    days = currentTimeLeft.value.days,
+                    hours = currentTimeLeft.value.hours,
+                    minutes = currentTimeLeft.value.minutes,
+                    seconds = currentTimeLeft.value.seconds
                 )
             }
         }
@@ -196,12 +288,15 @@ class RetirementGlanceWidget : GlanceAppWidget() {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = GlanceModifier.fillMaxWidth()
                 ) {
-                    RenderGlanceText(
+                    Text(
                         text = "RETIREMENT: " + retirementDate.format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)),
-                        fontSizeSp = 13f,
-                        color = goldColor,
-                        fontResId = R.font.playfair_display_semibold,
-                        isBold = true
+                        style = TextStyle(
+                            color = ColorProvider(day = goldColor, night = goldColor),
+                            fontSize = 13.sp,
+                            fontWeight = GlanceFontWeight.Bold,
+                            fontFamily = GlanceFontFamily.SansSerif,
+                            textAlign = TextAlign.Center
+                        )
                     )
 
                     Spacer(GlanceModifier.height(1.dp))
@@ -243,19 +338,25 @@ class RetirementGlanceWidget : GlanceAppWidget() {
                 .cornerRadius(8.dp)
                 .padding(horizontal = 2.dp, vertical = 2.dp)
         ) {
-            RenderGlanceText(
+            Text(
                 text = value,
-                fontSizeSp = 18f,
-                color = creamColor,
-                fontResId = R.font.playfair_display_semibold,
-                isBold = true
+                style = TextStyle(
+                    color = ColorProvider(day = creamColor, night = creamColor),
+                    fontSize = 18.sp,
+                    fontWeight = GlanceFontWeight.Bold,
+                    fontFamily = GlanceFontFamily.SansSerif,
+                    textAlign = TextAlign.Center
+                )
             )
-            RenderGlanceText(
+            Text(
                 text = label,
-                fontSizeSp = 8f,
-                color = goldColor,
-                fontResId = R.font.cormorant_garamond_medium,
-                isBold = true
+                style = TextStyle(
+                    color = ColorProvider(day = goldColor, night = goldColor),
+                    fontSize = 8.sp,
+                    fontWeight = GlanceFontWeight.Bold,
+                    fontFamily = GlanceFontFamily.SansSerif,
+                    textAlign = TextAlign.Center
+                )
             )
         }
     }

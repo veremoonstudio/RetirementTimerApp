@@ -583,7 +583,11 @@ fun EditHolidayDialog(
             try {
                 LocalDate.of(LocalDate.now().year, holiday.month, holiday.day)
             } catch (e: Exception) {
-                LocalDate.now()
+                try {
+                    LocalDate.of(2024, holiday.month, holiday.day)
+                } catch (_: Exception) {
+                    LocalDate.now()
+                }
             }
         )
     }

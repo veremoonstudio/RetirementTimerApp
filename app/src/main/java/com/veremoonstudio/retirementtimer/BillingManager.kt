@@ -25,25 +25,38 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
 
     private val productDetailsMap = mutableMapOf<String, ProductDetails>()
 
-    private val billingClient: BillingClient = instance ?: BillingClient.newBuilder(appContext)
-        .setListener(this)
-        .enablePendingPurchases(
-            PendingPurchasesParams.newBuilder()
-                .enableOneTimeProducts()
-                .enablePrepaidPlans()
-                .build()
-        )
-        .build().also { instance = it }
+    @Volatile
+    private var billingClient: BillingClient? = null
+
+    private fun getOrCreateBillingClient(): BillingClient? {
+        if (billingClient != null) return billingClient
+        return try {
+            instance ?: BillingClient.newBuilder(appContext)
+                .setListener(this)
+                .enablePendingPurchases(
+                    PendingPurchasesParams.newBuilder()
+                        .enableOneTimeProducts()
+                        .build()
+                )
+                .build().also {
+                    billingClient = it
+                    instance = it
+                }
+        } catch (_: Throwable) {
+            null
+        }
+    }
 
     init {
         try {
             startConnection()
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
     }
 
     fun startConnection() {
         try {
-            billingClient.startConnection(object : BillingClientStateListener {
+            val client = getOrCreateBillingClient() ?: return
+            client.startConnection(object : BillingClientStateListener {
                 override fun onBillingSetupFinished(billingResult: BillingResult) {
                     if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                         queryProducts()
@@ -52,14 +65,14 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                 }
 
                 override fun onBillingServiceDisconnected() {
-                    // Retry connection if needed
                 }
             })
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
     }
 
     private fun queryProducts() {
         try {
+            val client = getOrCreateBillingClient() ?: return
             val inAppProductList = listOf(
                 QueryProductDetailsParams.Product.newBuilder()
                     .setProductId(PRODUCT_LIFETIME)
@@ -78,7 +91,7 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                     .build()
             )
 
-            billingClient.queryProductDetailsAsync(
+            client.queryProductDetailsAsync(
                 QueryProductDetailsParams.newBuilder().setProductList(inAppProductList).build()
             ) { billingResult, productDetailsResult ->
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
@@ -92,7 +105,7 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                 }
             }
 
-            billingClient.queryProductDetailsAsync(
+            client.queryProductDetailsAsync(
                 QueryProductDetailsParams.newBuilder().setProductList(subProductList).build()
             ) { billingResult, productDetailsResult ->
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
@@ -106,14 +119,16 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                     }
                 }
             }
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
     }
 
     fun launchBillingFlow(activity: Activity, productId: String) {
         try {
+            val client = getOrCreateBillingClient() ?: return
             val details = productDetailsMap[productId] ?: return
             val productDetailsParamsList = if (details.productType == BillingClient.ProductType.SUBS) {
-                val offerToken = details.subscriptionOfferDetails?.firstOrNull()?.offerToken ?: ""
+                val offerToken = details.subscriptionOfferDetails?.firstOrNull()?.offerToken
+                if (offerToken.isNullOrEmpty()) return
                 listOf(
                     BillingFlowParams.ProductDetailsParams.newBuilder()
                         .setProductDetails(details)
@@ -132,13 +147,14 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                 .setProductDetailsParamsList(productDetailsParamsList)
                 .build()
 
-            billingClient.launchBillingFlow(activity, flowParams)
-        } catch (_: Exception) {}
+            client.launchBillingFlow(activity, flowParams)
+        } catch (_: Throwable) {}
     }
 
     fun queryPurchases() {
         try {
-            billingClient.queryPurchasesAsync(
+            val client = getOrCreateBillingClient() ?: return
+            client.queryPurchasesAsync(
                 QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()
             ) { billingResult, purchases ->
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
@@ -148,7 +164,7 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                 }
             }
 
-            billingClient.queryPurchasesAsync(
+            client.queryPurchasesAsync(
                 QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.SUBS).build()
             ) { billingResult, purchases ->
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
@@ -157,7 +173,7 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                     }
                 }
             }
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
     }
 
     override fun onPurchasesUpdated(billingResult: BillingResult, purchases: List<Purchase>?) {
@@ -170,12 +186,12 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                             val acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
                                 .setPurchaseToken(purchase.purchaseToken)
                                 .build()
-                            billingClient.acknowledgePurchase(acknowledgePurchaseParams) { }
+                            getOrCreateBillingClient()?.acknowledgePurchase(acknowledgePurchaseParams) { }
                         }
                     }
                 }
             }
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
     }
 
     companion object {

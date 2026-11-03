@@ -27,10 +27,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import android.content.pm.ActivityInfo
 import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.ads.MobileAds
-import com.google.android.ump.ConsentRequestParameters
-import com.google.android.ump.UserMessagingPlatform
 import com.veremoonstudio.retirementtimer.BuildConfig
 import com.veremoonstudio.retirementtimer.ui.theme.RetirementTimerAppTheme
 import kotlinx.coroutines.delay
@@ -38,48 +37,22 @@ import kotlinx.coroutines.delay
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        initUmpConsentAndAds()
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
-        )
+        try {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        } catch (_: Throwable) {}
+        try {
+            MobileAds.initialize(this) {}
+        } catch (_: Throwable) {}
+        try {
+            enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+                navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+            )
+        } catch (_: Throwable) {}
         setContent {
             RetirementTimerAppTheme {
                 MainNavigation()
             }
-        }
-    }
-
-    private fun initUmpConsentAndAds() {
-        try {
-            val params = ConsentRequestParameters.Builder()
-                .setTagForUnderAgeOfConsent(false)
-                .build()
-
-            val consentInformation = UserMessagingPlatform.getConsentInformation(this)
-            consentInformation.requestConsentInfoUpdate(
-                this,
-                params,
-                {
-                    UserMessagingPlatform.loadAndShowConsentFormIfRequired(this) { _ ->
-                        if (consentInformation.canRequestAds()) {
-                            try { MobileAds.initialize(this) {} } catch (_: Throwable) {}
-                        }
-                    }
-                },
-                { _ ->
-                    if (consentInformation.canRequestAds()) {
-                        try { MobileAds.initialize(this) {} } catch (_: Throwable) {}
-                    }
-                }
-            )
-
-            if (consentInformation.canRequestAds()) {
-                try { MobileAds.initialize(this) {} } catch (_: Throwable) {}
-            }
-        } catch (_: Throwable) {
-            try {
-                MobileAds.initialize(this) {}
-            } catch (_: Throwable) {}
         }
     }
 }

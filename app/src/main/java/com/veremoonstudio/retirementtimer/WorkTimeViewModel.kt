@@ -1,7 +1,6 @@
 package com.veremoonstudio.retirementtimer
 
 import android.app.Application
-import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -11,7 +10,6 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.time.DayOfWeek
@@ -21,10 +19,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.util.Locale
 
-private val Context.dataStore by preferencesDataStore(name = "work_time_settings")
 private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
-
-
 
 class WorkTimeViewModel(application: Application) : AndroidViewModel(application) {
     private val SETTINGS_KEY = stringPreferencesKey("all_settings")
@@ -47,19 +42,20 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
                     if (json != null) {
                         try {
                             val data = jsonParser.decodeFromString<SettingsData>(json)
+                            val targetDate = if (data.retirementDateEpoch > 0L) LocalDate.ofEpochDay(data.retirementDateEpoch) else LocalDate.now().plusYears(5)
                             _uiState.update {
                                 it.copy(
                                     isWorkTimeMode = data.isWorkTimeMode,
-                                    retirementDate = LocalDate.ofEpochDay(data.retirementDateEpoch),
+                                    retirementDate = targetDate,
                                     workDays = data.workDays.toSet(),
-                                    startTime = LocalTime.parse(data.startTimeStr),
-                                    endTime = LocalTime.parse(data.endTimeStr),
+                                    startTime = try { LocalTime.parse(data.startTimeStr) } catch (_: Exception) { LocalTime.of(9, 0) },
+                                    endTime = try { LocalTime.parse(data.endTimeStr) } catch (_: Exception) { LocalTime.of(18, 0) },
                                     vacationHours = data.vacationHours,
                                     holidays = data.holidays.map { h -> Holiday(h.name, h.month, h.day, h.isEnabled) },
                                     selectedBackground = data.selectedBackground
                                 )
                             }
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             // Keep defaults if error
                         }
                     }
@@ -120,7 +116,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
             }
             try {
                 RetirementGlanceWidget().updateAll(getApplication())
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Ignore if widget update fails
             }
         }
@@ -190,9 +186,12 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         if (now.isAfter(targetDateTime)) {
             var pastWorkDays = 0L
             var cursor = retirementDate.plusDays(1)
-            while (!cursor.isAfter(today.minusDays(1))) {
+            val maxCursor = today.minusDays(1)
+            var iterations = 0
+            while (!cursor.isAfter(maxCursor) && iterations < 3650) {
                 if (isWorkDay(cursor, state)) pastWorkDays++
                 cursor = cursor.plusDays(1)
+                iterations++
             }
 
             var todaySeconds = 0L
@@ -227,9 +226,11 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
 
         var futureWorkDays = 0L
         var cursor = today.plusDays(1)
-        while (!cursor.isAfter(retirementDate)) {
+        var iterations = 0
+        while (!cursor.isAfter(retirementDate) && iterations < 36500) {
             if (isWorkDay(cursor, state)) futureWorkDays++
             cursor = cursor.plusDays(1)
+            iterations++
         }
 
         var todaySeconds = 0L

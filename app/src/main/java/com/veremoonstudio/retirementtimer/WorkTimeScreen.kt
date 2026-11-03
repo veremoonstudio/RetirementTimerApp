@@ -25,13 +25,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -45,7 +42,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkTimeScreen(
     viewModel: WorkTimeViewModel = viewModel(),
@@ -54,6 +50,26 @@ fun WorkTimeScreen(
     onOpenMenu: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    WorkTimeScreenContent(
+        uiState = uiState,
+        onToggleMode = { viewModel.toggleMode(it) },
+        onUpdateRetirementDate = { viewModel.updateRetirementDate(it) },
+        onNavigateToPremium = onNavigateToPremium,
+        onNavigateToBackground = onNavigateToBackground,
+        onOpenMenu = onOpenMenu
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WorkTimeScreenContent(
+    uiState: WorkTimeUiState,
+    onToggleMode: (Boolean) -> Unit = {},
+    onUpdateRetirementDate: (LocalDate) -> Unit = {},
+    onNavigateToPremium: () -> Unit = {},
+    onNavigateToBackground: () -> Unit = {},
+    onOpenMenu: () -> Unit = {}
+) {
     var showDatePicker by remember { mutableStateOf(false) }
 
     MarbleBackground(selectedBackground = uiState.selectedBackground) {
@@ -63,62 +79,111 @@ fun WorkTimeScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 32.dp, start = 20.dp, end = 20.dp)
+                        .padding(top = 28.dp, start = 12.dp, end = 12.dp)
                         .statusBarsPadding(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
                 ) {
-                    TopBarItem(label = stringResource(R.string.work_time)) {
+                    TopBarItem(
+                        label = stringResource(R.string.work_time),
+                        onClick = { onToggleMode(!uiState.isWorkTimeMode) }
+                    ) {
                         GoldSwitch(
                             checked = uiState.isWorkTimeMode,
-                            onCheckedChange = { viewModel.toggleMode(it) }
+                            onCheckedChange = onToggleMode
                         )
                     }
 
                     Box(
                         modifier = Modifier.alpha(if (BuildConfig.IS_PREMIUM) 0f else 1f)
                     ) {
-                        TopBarItem(label = stringResource(R.string.premium)) {
+                        TopBarItem(
+                            label = stringResource(R.string.premium),
+                            onClick = if (BuildConfig.IS_PREMIUM) null else onNavigateToPremium
+                        ) {
                             IconSquareButton(
-                                icon = Icons.Filled.WorkspacePremium,
-                                onClick = onNavigateToPremium
+                                icon = Icons.Filled.WorkspacePremium
                             )
                         }
                     }
 
-                    TopBarItem(label = stringResource(R.string.background)) {
+                    TopBarItem(
+                        label = stringResource(R.string.background),
+                        onClick = onNavigateToBackground
+                    ) {
                         IconSquareButton(
-                            icon = Icons.Filled.Image,
-                            onClick = onNavigateToBackground
+                            icon = Icons.Filled.Image
                         )
                     }
 
-                    Box(modifier = Modifier.offset(x = (-8).dp).padding(top = 10.dp)) {
-                        IconButton(onClick = onOpenMenu, modifier = Modifier.size(36.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .offset(x = (-2).dp)
+                            .padding(top = 2.dp)
+                    ) {
+                        IconButton(
+                            onClick = onOpenMenu,
+                            modifier = Modifier.size(52.dp)
+                        ) {
                             Icon(
                                 imageVector = Icons.Filled.MoreHoriz,
                                 contentDescription = "More",
                                 tint = RetirementColors.Gold.copy(alpha = 0.9f),
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier.size(30.dp)
                             )
                         }
                     }
                 }
             },
             floatingActionButton = {
-                FloatingActionButton(
-                    onClick = { showDatePicker = true },
-                    containerColor = RetirementColors.Gold,
-                    contentColor = RetirementColors.Background,
-                    shape = CircleShape,
+                Box(
                     modifier = Modifier
-                        .padding(end = 20.dp, bottom = 100.dp)
-                        .size(64.dp)
+                        .padding(end = 4.dp, bottom = 84.dp)
+                        .size(110.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.CalendarMonth,
-                        contentDescription = stringResource(R.string.select_date)
+                    Box(
+                        modifier = Modifier
+                            .size(110.dp)
+                            .drawBehind {
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFFC9A961).copy(alpha = 0.40f),
+                                            Color(0xFF8A6D2F).copy(alpha = 0.18f),
+                                            Color(0xFF4A3815).copy(alpha = 0.08f),
+                                            Color.Transparent
+                                        ),
+                                        center = Offset(size.width / 2f, size.height / 2f + 16f),
+                                        radius = size.width * 0.48f
+                                    )
+                                )
+                            }
                     )
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFFE5C78B),
+                                        Color(0xFFD4B26F),
+                                        Color(0xFFB5934E),
+                                        Color(0xFF8E6E32)
+                                    )
+                                )
+                            )
+                            .clickable { showDatePicker = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CalendarMonth,
+                            contentDescription = stringResource(R.string.select_date),
+                            tint = Color(0xFF111315),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
             }
         ) { innerPadding ->
@@ -137,7 +202,7 @@ fun WorkTimeScreen(
                     fontFamily = CormorantGaramond,
                     fontStyle = FontStyle.Italic,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 18.sp,
+                    fontSize = 14.sp,
                     letterSpacing = 2.sp
                 )
                 Spacer(Modifier.height(12.dp))
@@ -181,7 +246,7 @@ fun WorkTimeScreen(
                 confirmButton = {
                     TextButton(onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
-                            viewModel.updateRetirementDate(LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000)))
+                            onUpdateRetirementDate(LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000)))
                         }
                         showDatePicker = false
                     }) {
@@ -204,6 +269,7 @@ fun getBackgroundDrawableRes(name: String): Int {
     return when (name) {
         "Palm Beach" -> R.drawable.bg_palm_beach
         "Mountain Road" -> R.drawable.bg_mountain_road
+        "Golf Course", "Golf" -> R.drawable.bg_golf
         "Lake" -> R.drawable.bg_lake
         else -> 0
     }
@@ -266,10 +332,26 @@ fun MarbleBackground(
 }
 
 @Composable
-private fun TopBarItem(label: String, content: @Composable () -> Unit) {
+private fun TopBarItem(
+    label: String,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onClick
+                    )
+                } else Modifier
+            )
+            .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         content()
         Text(
@@ -299,7 +381,7 @@ private fun GoldSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
 }
 
 @Composable
-private fun IconSquareButton(icon: ImageVector, onClick: () -> Unit) {
+private fun IconSquareButton(icon: ImageVector) {
     Box(
         modifier = Modifier
             .size(46.dp)
@@ -309,12 +391,7 @@ private fun IconSquareButton(icon: ImageVector, onClick: () -> Unit) {
                     listOf(RetirementColors.IconBgStart, RetirementColors.IconBgEnd)
                 )
             )
-            .border(1.dp, RetirementColors.Gold, RoundedCornerShape(12.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            ),
+            .border(1.dp, RetirementColors.Gold, RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -358,6 +435,6 @@ private fun CounterCell(value: String, label: String) {
 @Composable
 fun WorkTimeScreenLuxPreview() {
     RetirementTimerAppTheme {
-        WorkTimeScreen()
+        WorkTimeScreenContent(uiState = WorkTimeUiState())
     }
 }

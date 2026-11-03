@@ -9,16 +9,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.veremoonstudio.retirementtimer.ui.theme.CormorantGaramond
-import com.veremoonstudio.retirementtimer.ui.theme.PlayfairDisplay
 
-@Preview(name = "Widget 3x1 Preview", widthDp = 300, heightDp = 60, showBackground = true,
-    device = "spec:width=1010px,height=2340px,dpi=440"
+@Preview(
+    name = "Widget 3x1 Preview",
+    widthDp = 300,
+    heightDp = 60,
+    showBackground = true
 )
 @Composable
 fun Widget3x1Preview() {
@@ -30,13 +32,12 @@ fun Widget3x1Preview() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(vertical = 1.dp),
+            .padding(vertical = 4.dp, horizontal = 2.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .wrapContentHeight()
                 .clip(RoundedCornerShape(12.dp))
                 .background(bgColor)
                 .padding(horizontal = 4.dp, vertical = 2.dp),
@@ -44,12 +45,13 @@ fun Widget3x1Preview() {
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = "RETIREMENT: Dec 31, 2030",
                     color = goldColor,
-                    fontFamily = PlayfairDisplay,
+                    fontFamily = FontFamily.SansSerif,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
@@ -69,21 +71,21 @@ fun Widget3x1Preview() {
                                 .weight(1f)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(cardBg)
-                                .padding(vertical = 1.dp),
+                                .padding(horizontal = 2.dp, vertical = 2.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = valStr,
                                     color = creamColor,
-                                    fontFamily = PlayfairDisplay,
+                                    fontFamily = FontFamily.SansSerif,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = label,
                                     color = goldColor,
-                                    fontFamily = CormorantGaramond,
+                                    fontFamily = FontFamily.SansSerif,
                                     fontSize = 8.sp,
                                     fontWeight = FontWeight.Bold
                                 )
