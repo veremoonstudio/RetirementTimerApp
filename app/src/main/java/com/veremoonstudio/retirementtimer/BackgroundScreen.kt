@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -118,11 +119,14 @@ fun BackgroundScreen(
                     Text(
                         text = stringResource(R.string.tap_to_unlock),
                         style = TextStyle(
-                            fontFamily = CormorantGaramond,
+                            fontFamily = PlayfairDisplay,
+                            fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Italic,
-                            fontSize = 16.sp,
-                            color = RetirementColors.Gold.copy(alpha = 0.8f)
+                            fontSize = 19.sp,
+                            color = RetirementColors.Gold,
+                            textAlign = TextAlign.Center
                         ),
+                        textAlign = TextAlign.Center,
                         modifier = Modifier
                             .clickable { onNavigateToPremium() }
                             .padding(top = 16.dp, bottom = 110.dp)
@@ -169,6 +173,7 @@ fun BackgroundCard(
         "None" -> stringResource(R.string.bg_none)
         "Palm Beach" -> stringResource(R.string.bg_palm_beach)
         "Mountain Road" -> stringResource(R.string.bg_mountain_road)
+        "Golf Course", "Golf" -> stringResource(R.string.bg_golf_course)
         "Lake" -> stringResource(R.string.bg_lake)
         else -> name
     }
@@ -257,10 +262,18 @@ fun BackgroundCard(
         Text(
             text = displayName,
             style = TextStyle(
-                fontFamily = CormorantGaramond,
-                fontSize = 14.sp,
-                color = if (isSelected) RetirementColors.Gold else RetirementColors.Cream.copy(alpha = 0.7f)
-            )
+                fontFamily = PlayfairDisplay,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isSelected) RetirementColors.Gold else RetirementColors.Cream,
+                textAlign = TextAlign.Center
+            ),
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            lineHeight = 18.sp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 2.dp)
         )
     }
 }

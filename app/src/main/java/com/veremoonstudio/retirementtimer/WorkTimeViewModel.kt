@@ -43,6 +43,11 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
                         try {
                             val data = jsonParser.decodeFromString<SettingsData>(json)
                             val targetDate = if (data.retirementDateEpoch > 0L) LocalDate.ofEpochDay(data.retirementDateEpoch) else LocalDate.now().plusYears(5)
+                            val holidaysList = if (!json.contains("\"holidays\"") || data.holidays.size <= 2) {
+                                defaultHolidays
+                            } else {
+                                data.holidays.map { h -> Holiday(h.name, h.month, h.day, h.isEnabled) }
+                            }
                             _uiState.update {
                                 it.copy(
                                     isWorkTimeMode = data.isWorkTimeMode,
@@ -51,7 +56,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
                                     startTime = try { LocalTime.parse(data.startTimeStr) } catch (_: Exception) { LocalTime.of(9, 0) },
                                     endTime = try { LocalTime.parse(data.endTimeStr) } catch (_: Exception) { LocalTime.of(18, 0) },
                                     vacationHours = data.vacationHours,
-                                    holidays = data.holidays.map { h -> Holiday(h.name, h.month, h.day, h.isEnabled) },
+                                    holidays = holidaysList,
                                     selectedBackground = data.selectedBackground
                                 )
                             }

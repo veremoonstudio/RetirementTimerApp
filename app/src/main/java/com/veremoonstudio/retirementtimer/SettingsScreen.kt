@@ -107,9 +107,10 @@ fun SettingsScreen(
                                 Text(
                                     text = day.name.take(3),
                                     style = TextStyle(
-                                        fontFamily = CormorantGaramond,
-                                        fontSize = 12.sp,
-                                        color = if (isSelected) RetirementColors.Gold else Color.Gray
+                                        fontFamily = PlayfairDisplay,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp,
+                                        color = if (isSelected) RetirementColors.Gold else RetirementColors.Cream.copy(alpha = 0.5f)
                                     )
                                 )
                                 Checkbox(
@@ -160,7 +161,12 @@ fun SettingsScreen(
                     ) {
                         Text(
                             text = stringResource(R.string.vacation_hours),
-                            style = TextStyle(fontFamily = CormorantGaramond, fontSize = 16.sp, color = RetirementColors.Cream)
+                            style = TextStyle(
+                                fontFamily = PlayfairDisplay,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = RetirementColors.Cream
+                            )
                         )
                         var isFocused by remember { mutableStateOf(false) }
                         var textValue by remember { mutableStateOf(uiState.vacationHours.toString()) }
@@ -173,8 +179,8 @@ fun SettingsScreen(
 
                         Box(
                             modifier = Modifier
-                                .width(70.dp)
-                                .height(30.dp)
+                                .width(80.dp)
+                                .height(38.dp)
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(Color.White.copy(alpha = 0.03f))
                                 .border(1.dp, RetirementColors.Gold.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
@@ -191,7 +197,7 @@ fun SettingsScreen(
                                 },
                                 textStyle = TextStyle(
                                     fontFamily = PlayfairDisplay,
-                                    fontSize = 18.sp,
+                                    fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = RetirementColors.Gold,
                                     textAlign = TextAlign.Center
@@ -242,7 +248,9 @@ fun SettingsScreen(
                     ) {
                         Button(
                             onClick = { showAddHolidayDialog = true },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color.White.copy(alpha = 0.1f),
                                 contentColor = RetirementColors.Gold
@@ -252,7 +260,12 @@ fun SettingsScreen(
                         ) {
                             Text(
                                 text = stringResource(R.string.add_new_holiday),
-                                style = TextStyle(fontFamily = CormorantGaramond, fontWeight = FontWeight.Bold)
+                                style = TextStyle(
+                                    fontFamily = PlayfairDisplay,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = RetirementColors.Gold
+                                )
                             )
                         }
 
@@ -263,15 +276,26 @@ fun SettingsScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .combinedClickable(
-                                        onClick = { },
+                                        onClick = {
+                                            val newList = uiState.holidays.map {
+                                                if (it == holiday) it.copy(isEnabled = !it.isEnabled) else it
+                                            }
+                                            viewModel.updateHolidays(newList)
+                                        },
                                         onLongClick = { holidayToEdit = holiday }
-                                    ),
+                                    )
+                                    .padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
                                     text = "${holiday.name} (${holiday.month}/${holiday.day})",
-                                    style = TextStyle(fontFamily = CormorantGaramond, fontSize = 15.sp, color = RetirementColors.Cream)
+                                    style = TextStyle(
+                                        fontFamily = PlayfairDisplay,
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = RetirementColors.Cream
+                                    )
                                 )
                                 Checkbox(
                                     checked = holiday.isEnabled,
@@ -403,12 +427,11 @@ fun SettingsSectionTitle(title: String) {
     Text(
         text = title,
         style = TextStyle(
-            fontFamily = CormorantGaramond,
-            fontWeight = FontWeight.Bold,
-            fontStyle = FontStyle.Italic,
-            fontSize = 14.sp,
+            fontFamily = PlayfairDisplay,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 16.sp,
             letterSpacing = 2.sp,
-            color = RetirementColors.Gold.copy(alpha = 0.8f)
+            color = RetirementColors.Gold
         ),
         modifier = Modifier.padding(bottom = 8.dp)
     )
@@ -429,11 +452,21 @@ fun SettingsRow(label: String, value: String, onClick: () -> Unit) {
     ) {
         Text(
             text = label,
-            style = TextStyle(fontFamily = CormorantGaramond, fontSize = 16.sp, color = RetirementColors.Cream)
+            style = TextStyle(
+                fontFamily = PlayfairDisplay,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = RetirementColors.Cream
+            )
         )
         Text(
             text = value,
-            style = TextStyle(fontFamily = PlayfairDisplay, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = RetirementColors.Gold)
+            style = TextStyle(
+                fontFamily = PlayfairDisplay,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = RetirementColors.Gold
+            )
         )
     }
 }

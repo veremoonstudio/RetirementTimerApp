@@ -357,9 +357,9 @@ private fun TopBarItem(
         Text(
             text = label,
             color = RetirementColors.Gold,
-            fontFamily = CormorantGaramond,
+            fontFamily = PlayfairDisplay,
             fontWeight = FontWeight.SemiBold,
-            fontSize = 13.sp
+            fontSize = 14.sp
         )
     }
 }
