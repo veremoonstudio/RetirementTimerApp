@@ -51,7 +51,6 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
-    val uriHandler = LocalUriHandler.current
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
 
@@ -341,33 +340,6 @@ fun SettingsScreen(
                             }
                         )
                     }
-                }
-
-                // Terms & Privacy Policy Links
-                item {
-                    val termsUrl = stringResource(R.string.terms_url)
-                    SettingsRow(
-                        label = stringResource(R.string.terms_link),
-                        value = "➔",
-                        onClick = {
-                            try {
-                                uriHandler.openUri(termsUrl)
-                            } catch (_: Throwable) {}
-                        }
-                    )
-                }
-
-                item {
-                    val privacyUrl = stringResource(R.string.privacy_policy_url)
-                    SettingsRow(
-                        label = stringResource(R.string.privacy_policy_link),
-                        value = "➔",
-                        onClick = {
-                            try {
-                                uriHandler.openUri(privacyUrl)
-                            } catch (_: Throwable) {}
-                        }
-                    )
                 }
 
                 // UMP Privacy Options (EEA/UK/US consent choices)

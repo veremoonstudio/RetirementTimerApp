@@ -6,13 +6,20 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.updateAll
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class RetirementWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = RetirementGlanceWidget()
 
     companion object {
+        const val ACTION_UPDATE_WIDGET = "com.veremoonstudio.retirementtimer.ACTION_UPDATE_WIDGET"
+
         fun scheduleNextMinuteAlarm(context: Context) {
             try {
                 val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
@@ -23,7 +30,7 @@ class RetirementWidgetReceiver : GlanceAppWidgetReceiver() {
                 if (appWidgetIds.isEmpty()) return
 
                 val intent = Intent(context, RetirementWidgetReceiver::class.java).apply {
-                    action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                    action = ACTION_UPDATE_WIDGET
                     putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
                 }
                 val pendingIntent = PendingIntent.getBroadcast(
@@ -35,14 +42,48 @@ class RetirementWidgetReceiver : GlanceAppWidgetReceiver() {
                 val now = System.currentTimeMillis()
                 val nextMinute = now + (60000 - (now % 60000)) + 100L
 
-                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        if (alarmManager.canScheduleExactAlarms()) {
+                            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                        } else {
+                            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                        }
+                    } else {
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                    }
+                } catch (_: SecurityException) {
+                    try {
+                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                    } catch (_: Throwable) {}
+                }
             } catch (_: Throwable) {}
         }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        scheduleNextMinuteAlarm(context)
+
+        val action = intent.action
+        if (action == ACTION_UPDATE_WIDGET ||
+            action == Intent.ACTION_BOOT_COMPLETED ||
+            action == Intent.ACTION_MY_PACKAGE_REPLACED ||
+            action == Intent.ACTION_TIME_CHANGED ||
+            action == Intent.ACTION_TIMEZONE_CHANGED ||
+            action == Intent.ACTION_USER_PRESENT) {
+            val pendingResult = goAsync()
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    RetirementGlanceWidget().updateAll(context)
+                } catch (_: Throwable) {
+                } finally {
+                    scheduleNextMinuteAlarm(context)
+                    pendingResult.finish()
+                }
+            }
+        } else {
+            scheduleNextMinuteAlarm(context)
+        }
     }
 
     override fun onUpdate(

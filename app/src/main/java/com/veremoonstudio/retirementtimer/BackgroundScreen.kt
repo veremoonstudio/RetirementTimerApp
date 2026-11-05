@@ -25,7 +25,6 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -227,9 +226,7 @@ fun BackgroundCard(
 
                 if (isLocked) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -241,19 +238,23 @@ fun BackgroundCard(
                     }
                 } else if (isSelected) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.TopEnd
                     ) {
-                        Text(
-                            text = "ACTIVE",
-                            style = TextStyle(
-                                color = RetirementColors.Gold,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
+                        Surface(
+                            color = RetirementColors.Gold,
+                            shape = RoundedCornerShape(bottomStart = 8.dp)
+                        ) {
+                            Text(
+                                text = "ACTIVE",
+                                style = TextStyle(
+                                    color = Color(0xFF111315),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
-                        )
+                        }
                     }
                 }
             }

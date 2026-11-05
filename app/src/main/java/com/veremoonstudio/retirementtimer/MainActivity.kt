@@ -34,6 +34,11 @@ import com.veremoonstudio.retirementtimer.BuildConfig
 import com.veremoonstudio.retirementtimer.ui.theme.RetirementTimerAppTheme
 import kotlinx.coroutines.delay
 
+import androidx.glance.appwidget.updateAll
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,6 +59,27 @@ class MainActivity : ComponentActivity() {
                 MainNavigation()
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateWidget()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        updateWidget()
+    }
+
+    private fun updateWidget() {
+        try {
+            RetirementWidgetReceiver.scheduleNextMinuteAlarm(this)
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    RetirementGlanceWidget().updateAll(applicationContext)
+                } catch (_: Throwable) {}
+            }
+        } catch (_: Throwable) {}
     }
 }
 

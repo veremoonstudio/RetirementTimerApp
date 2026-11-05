@@ -1,6 +1,9 @@
 package com.veremoonstudio.retirementtimer
 
 import android.app.Activity
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,7 +25,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -149,12 +151,26 @@ fun PremiumScreen(
 
                     val termsUrl = stringResource(R.string.terms_url)
                     val privacyUrl = stringResource(R.string.privacy_policy_url)
+                    val context = LocalContext.current
+                    val msgRestoring = stringResource(R.string.restoring_purchases)
+                    val msgRestored = stringResource(R.string.purchases_restored)
+                    val msgNoPurchases = stringResource(R.string.no_purchases_found)
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         FooterLink(stringResource(R.string.restore_purchases)) {
-                            viewModel.billingManager.queryPurchases()
+                            Toast.makeText(context, msgRestoring, Toast.LENGTH_SHORT).show()
+                            viewModel.billingManager.queryPurchases { found ->
+                                Handler(Looper.getMainLooper()).post {
+                                    if (found) {
+                                        Toast.makeText(context, msgRestored, Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, msgNoPurchases, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
                         }
                         Text("•", color = RetirementColors.AdTextColor)
                         FooterLink(stringResource(R.string.terms_link)) {
@@ -233,8 +249,7 @@ fun FooterLink(text: String, onClick: () -> Unit) {
         style = TextStyle(
             fontFamily = CormorantGaramond,
             fontSize = 13.sp,
-            color = RetirementColors.Gold,
-            textDecoration = TextDecoration.Underline
+            color = RetirementColors.Gold
         ),
         modifier = Modifier.clickable { onClick() }
     )

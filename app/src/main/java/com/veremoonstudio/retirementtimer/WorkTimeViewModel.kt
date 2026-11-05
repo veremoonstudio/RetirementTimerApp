@@ -3,7 +3,6 @@ package com.veremoonstudio.retirementtimer
 import android.app.Application
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -121,6 +120,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
             }
             try {
                 RetirementGlanceWidget().updateAll(getApplication())
+                RetirementWidgetReceiver.scheduleNextMinuteAlarm(getApplication())
             } catch (_: Exception) {
                 // Ignore if widget update fails
             }
@@ -143,12 +143,12 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         if (state.isWorkTimeMode) {
             _uiState.update { it.copy(timeLeft = calculateWorkTime(now, state.retirementDate, state)) }
         } else {
-            _uiState.update { it.copy(timeLeft = calculateTotalTime(now, state.retirementDate)) }
+            _uiState.update { it.copy(timeLeft = calculateTotalTime(now, state.retirementDate, state.endTime)) }
         }
     }
 
-    private fun calculateTotalTime(now: LocalDateTime, retirementDate: LocalDate): TimeLeftData {
-        val target = retirementDate.atTime(LocalTime.MAX)
+    private fun calculateTotalTime(now: LocalDateTime, retirementDate: LocalDate, targetTime: LocalTime): TimeLeftData {
+        val target = retirementDate.atTime(targetTime)
         if (now.isAfter(target)) {
             val duration = Duration.between(target, now)
             val days = duration.toDays()
@@ -156,7 +156,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
             val minutes = duration.toMinutes() % 60
             val seconds = duration.seconds % 60
 
-            val formattedDays = if (days == 0L) "\u221200" else "\u2212${String.format(Locale.US, "%02d", days)}"
+            val formattedDays = String.format(Locale.US, "%02d", days)
             return TimeLeftData(
                 days = formattedDays,
                 hours = String.format(Locale.US, "%02d", hours),
@@ -219,7 +219,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
             val minutesPast = remainder / 60
             val secondsPast = remainder % 60
 
-            val formattedDays = if (daysPast == 0L) "\u221200" else "\u2212${String.format(Locale.US, "%02d", daysPast)}"
+            val formattedDays = String.format(Locale.US, "%02d", daysPast)
 
             return TimeLeftData(
                 days = formattedDays,

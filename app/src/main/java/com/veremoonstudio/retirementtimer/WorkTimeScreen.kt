@@ -39,6 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.veremoonstudio.retirementtimer.BuildConfig
 import com.veremoonstudio.retirementtimer.ui.theme.*
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -54,6 +55,7 @@ fun WorkTimeScreen(
         uiState = uiState,
         onToggleMode = { viewModel.toggleMode(it) },
         onUpdateRetirementDate = { viewModel.updateRetirementDate(it) },
+        onUpdateTimes = { start, end -> viewModel.updateTimes(start, end) },
         onNavigateToPremium = onNavigateToPremium,
         onNavigateToBackground = onNavigateToBackground,
         onOpenMenu = onOpenMenu
@@ -66,11 +68,14 @@ fun WorkTimeScreenContent(
     uiState: WorkTimeUiState,
     onToggleMode: (Boolean) -> Unit = {},
     onUpdateRetirementDate: (LocalDate) -> Unit = {},
+    onUpdateTimes: (LocalTime, LocalTime) -> Unit = { _, _ -> },
     onNavigateToPremium: () -> Unit = {},
     onNavigateToBackground: () -> Unit = {},
     onOpenMenu: () -> Unit = {}
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var pendingDate by remember { mutableStateOf<LocalDate?>(null) }
 
     MarbleBackground(selectedBackground = uiState.selectedBackground) {
         Scaffold(
@@ -239,16 +244,26 @@ fun WorkTimeScreenContent(
 
         if (showDatePicker) {
             val datePickerState = rememberDatePickerState(
-                initialSelectedDateMillis = uiState.retirementDate.toEpochDay() * 24 * 60 * 60 * 1000
+                initialSelectedDateMillis = null,
+                initialDisplayedMonthMillis = uiState.retirementDate.toEpochDay() * 24 * 60 * 60 * 1000
             )
+
+            LaunchedEffect(datePickerState.selectedDateMillis) {
+                datePickerState.selectedDateMillis?.let { millis ->
+                    pendingDate = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
+                    showDatePicker = false
+                    showTimePicker = true
+                }
+            }
+
             DatePickerDialog(
                 onDismissRequest = { showDatePicker = false },
                 confirmButton = {
                     TextButton(onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            onUpdateRetirementDate(LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000)))
-                        }
+                        val millis = datePickerState.selectedDateMillis ?: (uiState.retirementDate.toEpochDay() * 24 * 60 * 60 * 1000)
+                        pendingDate = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
                         showDatePicker = false
+                        showTimePicker = true
                     }) {
                         Text(stringResource(R.string.ok))
                     }
@@ -261,6 +276,21 @@ fun WorkTimeScreenContent(
             ) {
                 DatePicker(state = datePickerState)
             }
+        }
+
+        if (showTimePicker) {
+            TimePickerDialog(
+                onDismiss = { showTimePicker = false },
+                onConfirm = { hour, minute ->
+                    pendingDate?.let { date ->
+                        onUpdateRetirementDate(date)
+                    }
+                    onUpdateTimes(uiState.startTime, LocalTime.of(hour, minute))
+                    showTimePicker = false
+                },
+                initialHour = uiState.endTime.hour,
+                initialMinute = uiState.endTime.minute
+            )
         }
     }
 }
@@ -291,11 +321,6 @@ fun MarbleBackground(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.35f))
             )
         } else {
             Box(

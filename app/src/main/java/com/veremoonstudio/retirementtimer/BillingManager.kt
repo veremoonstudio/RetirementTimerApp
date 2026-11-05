@@ -151,17 +151,39 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
         } catch (_: Throwable) {}
     }
 
-    fun queryPurchases() {
+    fun queryPurchases(onComplete: ((Boolean) -> Unit)? = null) {
         try {
-            val client = getOrCreateBillingClient() ?: return
+            val client = getOrCreateBillingClient()
+            if (client == null) {
+                onComplete?.invoke(false)
+                return
+            }
+            if (!client.isReady) {
+                startConnection()
+                onComplete?.invoke(false)
+                return
+            }
+
+            var hasPurchases = false
+            var completedCount = 0
+
+            fun checkDone() {
+                completedCount++
+                if (completedCount >= 2) {
+                    onComplete?.invoke(hasPurchases)
+                }
+            }
+
             client.queryPurchasesAsync(
                 QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()
             ) { billingResult, purchases ->
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     if (purchases.any { it.purchaseState == Purchase.PurchaseState.PURCHASED }) {
                         _isPremiumUnlocked.value = true
+                        hasPurchases = true
                     }
                 }
+                checkDone()
             }
 
             client.queryPurchasesAsync(
@@ -170,10 +192,14 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     if (purchases.any { it.purchaseState == Purchase.PurchaseState.PURCHASED }) {
                         _isPremiumUnlocked.value = true
+                        hasPurchases = true
                     }
                 }
+                checkDone()
             }
-        } catch (_: Throwable) {}
+        } catch (_: Throwable) {
+            onComplete?.invoke(false)
+        }
     }
 
     override fun onPurchasesUpdated(billingResult: BillingResult, purchases: List<Purchase>?) {

@@ -40,6 +40,9 @@
     <string name="monthly">Monthly</string>
     <string name="continue_button">CONTINUE</string>
     <string name="restore_purchases">Restore</string>
+    <string name="restoring_purchases">Restoring purchases…</string>
+    <string name="purchases_restored">Purchases successfully restored!</string>
+    <string name="no_purchases_found">No active purchases found.</string>
     <string name="terms_link">Terms</string>
     <string name="privacy_policy_link">Privacy Policy</string>
 

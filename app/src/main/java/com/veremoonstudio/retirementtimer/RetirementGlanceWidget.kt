@@ -11,12 +11,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
-import androidx.glance.LocalContext
-import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.AndroidRemoteViews
@@ -63,16 +60,17 @@ private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 fun calculateWidgetTimeLeft(settings: SettingsData): TimeLeftData {
     val now = LocalDateTime.now()
     val retirementDate = if (settings.retirementDateEpoch > 0L) LocalDate.ofEpochDay(settings.retirementDateEpoch) else LocalDate.now().plusYears(5)
+    val endTime = try { LocalTime.parse(settings.endTimeStr) } catch (_: Exception) { LocalTime.of(18, 0) }
 
     if (!settings.isWorkTimeMode) {
-        val target = retirementDate.atTime(LocalTime.MAX)
+        val target = retirementDate.atTime(endTime)
         if (now.isAfter(target)) {
             val duration = Duration.between(target, now)
             val days = duration.toDays()
             val hours = duration.toHours() % 24
             val minutes = duration.toMinutes() % 60
             val seconds = duration.seconds % 60
-            val formattedDays = if (days == 0L) "\u221200" else "\u2212${String.format(Locale.US, "%02d", days)}"
+            val formattedDays = String.format(Locale.US, "%02d", days)
             return TimeLeftData(days = formattedDays, hours = String.format(Locale.US, "%02d", hours), minutes = String.format(Locale.US, "%02d", minutes), seconds = String.format(Locale.US, "%02d", seconds))
         }
         val duration = Duration.between(now, target)
@@ -84,7 +82,6 @@ fun calculateWidgetTimeLeft(settings: SettingsData): TimeLeftData {
     }
 
     val startTime = try { LocalTime.parse(settings.startTimeStr) } catch (_: Exception) { LocalTime.of(9, 0) }
-    val endTime = try { LocalTime.parse(settings.endTimeStr) } catch (_: Exception) { LocalTime.of(18, 0) }
     val workSecondsPerDay = Duration.between(startTime, endTime).seconds
     if (workSecondsPerDay <= 0) return TimeLeftData("00", "00", "00", "00")
 
@@ -125,7 +122,7 @@ fun calculateWidgetTimeLeft(settings: SettingsData): TimeLeftData {
         val minutesPast = remainder / 60
         val secondsPast = remainder % 60
 
-        val formattedDays = if (daysPast == 0L) "\u221200" else "\u2212${String.format(Locale.US, "%02d", daysPast)}"
+        val formattedDays = String.format(Locale.US, "%02d", daysPast)
 
         return TimeLeftData(days = formattedDays, hours = String.format(Locale.US, "%02d", hoursPast), minutes = String.format(Locale.US, "%02d", minutesPast), seconds = String.format(Locale.US, "%02d", secondsPast))
     }
@@ -239,6 +236,11 @@ class RetirementGlanceWidget : GlanceAppWidget() {
                                 } else {
                                     LocalDate.now().plusYears(5)
                                 }
+                                currentTimeLeft.value = try {
+                                    calculateWidgetTimeLeft(newSettings)
+                                } catch (_: Throwable) {
+                                    TimeLeftData("00", "00", "00", "00")
+                                }
                             }
                         }
                     } catch (_: Throwable) {}
@@ -277,11 +279,6 @@ class RetirementGlanceWidget : GlanceAppWidget() {
         val goldColor = Color(0xFFC9A961)
         val creamColor = Color(0xFFF5F0E3)
         val bgColor = ColorProvider(day = Color(0xFF1C1C1E), night = Color(0xFF1C1C1E))
-
-        val currentSize = LocalSize.current
-        val width = currentSize.width
-
-        val showSeconds = width >= 180.dp
 
         Box(
             modifier = GlanceModifier
@@ -326,10 +323,8 @@ class RetirementGlanceWidget : GlanceAppWidget() {
                         CounterWidgetCellCompact(value = hours, label = "HRS", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
                         Spacer(GlanceModifier.width(3.dp))
                         CounterWidgetCellCompact(value = minutes, label = "MIN", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                        if (showSeconds) {
-                            Spacer(GlanceModifier.width(3.dp))
-                            CounterWidgetCellCompact(value = seconds, label = "SEC", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
-                        }
+                        Spacer(GlanceModifier.width(3.dp))
+                        CounterWidgetCellCompact(value = seconds, label = "SEC", goldColor = goldColor, creamColor = creamColor, modifier = GlanceModifier.defaultWeight())
                     }
                 }
             }
