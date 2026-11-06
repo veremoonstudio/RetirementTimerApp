@@ -10,7 +10,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -144,9 +143,7 @@ fun MainNavigation(
 
         if (currentRoute != "splash" && currentRoute != "premium" && !isPremium) {
             Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
+                modifier = Modifier.align(Alignment.BottomCenter)
             ) {
                 BottomAdBanner(height = 100.dp)
             }

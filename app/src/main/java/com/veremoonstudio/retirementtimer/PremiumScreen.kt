@@ -3,7 +3,7 @@ package com.veremoonstudio.retirementtimer
 import android.app.Activity
 import android.os.Handler
 import android.os.Looper
-import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -30,6 +30,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.veremoonstudio.retirementtimer.ui.theme.*
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PremiumScreen(
@@ -37,6 +40,8 @@ fun PremiumScreen(
     viewModel: WorkTimeViewModel = viewModel()
 ) {
     var selectedOption by remember { mutableStateOf(BillingManager.PRODUCT_YEARLY) }
+    var restoreStatusMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val productPrices by viewModel.billingManager.productPrices.collectAsState()
@@ -117,6 +122,33 @@ fun PremiumScreen(
                     )
                 }
 
+                // Status Badge centered between Monthly Card and CONTINUE Button
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (restoreStatusMessage != null) {
+                        Surface(
+                            color = Color(0xFF262628),
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, RetirementColors.Gold.copy(alpha = 0.6f))
+                        ) {
+                            Text(
+                                text = restoreStatusMessage!!,
+                                style = TextStyle(
+                                    fontFamily = PlayfairDisplay,
+                                    fontSize = 14.sp,
+                                    color = RetirementColors.Cream,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                }
+
                 // Footer
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Button(
@@ -151,7 +183,6 @@ fun PremiumScreen(
 
                     val termsUrl = stringResource(R.string.terms_url)
                     val privacyUrl = stringResource(R.string.privacy_policy_url)
-                    val context = LocalContext.current
                     val msgRestoring = stringResource(R.string.restoring_purchases)
                     val msgRestored = stringResource(R.string.purchases_restored)
                     val msgNoPurchases = stringResource(R.string.no_purchases_found)
@@ -161,13 +192,21 @@ fun PremiumScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         FooterLink(stringResource(R.string.restore_purchases)) {
-                            Toast.makeText(context, msgRestoring, Toast.LENGTH_SHORT).show()
+                            restoreStatusMessage = msgRestoring
+                            coroutineScope.launch {
+                                delay(1500)
+                                if (restoreStatusMessage == msgRestoring) {
+                                    restoreStatusMessage = msgNoPurchases
+                                    delay(1000)
+                                    restoreStatusMessage = null
+                                }
+                            }
                             viewModel.billingManager.queryPurchases { found ->
                                 Handler(Looper.getMainLooper()).post {
-                                    if (found) {
-                                        Toast.makeText(context, msgRestored, Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        Toast.makeText(context, msgNoPurchases, Toast.LENGTH_SHORT).show()
+                                    restoreStatusMessage = if (found) msgRestored else msgNoPurchases
+                                    coroutineScope.launch {
+                                        delay(1000)
+                                        restoreStatusMessage = null
                                     }
                                 }
                             }
