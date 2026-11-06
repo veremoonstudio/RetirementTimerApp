@@ -30,10 +30,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import android.content.pm.ActivityInfo
 import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.ads.MobileAds
-import com.veremoonstudio.retirementtimer.BuildConfig
 import com.veremoonstudio.retirementtimer.ui.theme.RetirementTimerAppTheme
 import kotlinx.coroutines.delay
 
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +55,10 @@ class MainActivity : ComponentActivity() {
                 statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
                 navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
             )
+            WindowCompat.getInsetsController(window, window.decorView).apply {
+                hide(WindowInsetsCompat.Type.navigationBars())
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
         } catch (_: Throwable) {}
         setContent {
             RetirementTimerAppTheme {

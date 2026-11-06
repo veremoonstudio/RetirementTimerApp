@@ -455,7 +455,6 @@ fun TimePickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.border(1.dp, RetirementColors.Gold, RoundedCornerShape(28.dp)),
         confirmButton = {
             TextButton(onClick = { onConfirm(state.hour, state.minute) }) {
                 Text(stringResource(R.string.ok), color = RetirementColors.Gold)

@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.veremoonstudio.retirementtimer.BuildConfig
 import com.veremoonstudio.retirementtimer.ui.theme.*
+import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -274,7 +275,14 @@ fun WorkTimeScreenContent(
                     }
                 }
             ) {
-                DatePicker(state = datePickerState)
+                DatePicker(
+                    state = datePickerState,
+                    colors = DatePickerDefaults.colors(
+                        selectedDayContainerColor = Color.Transparent,
+                        selectedDayContentColor = RetirementColors.Cream,
+                        todayDateBorderColor = Color.Transparent
+                    )
+                )
             }
         }
 
