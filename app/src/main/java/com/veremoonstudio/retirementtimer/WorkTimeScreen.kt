@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -227,11 +228,12 @@ fun WorkTimeScreenContent(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "At " + uiState.endTime.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.US)),
+                        text = ("AT " + uiState.endTime.format(DateTimeFormatter.ofPattern("h:mm a", Locale.US))).uppercase(Locale.US),
                         color = RetirementColors.Cream,
-                        fontFamily = PlayfairDisplay,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 20.sp,
+                        fontFamily = FontFamily.Default,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 17.sp,
+                        letterSpacing = 1.sp,
                         textAlign = TextAlign.Center
                     )
                 }
