@@ -54,6 +54,10 @@ fun SettingsScreen(
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
 
+    val isPremiumUnlocked by viewModel.billingManager.isPremiumUnlocked.collectAsState()
+    val isPremium = BuildConfig.IS_PREMIUM || isPremiumUnlocked
+    val bottomPadding = if (!isPremium) 125.dp else 24.dp
+
     MarbleBackground(selectedBackground = uiState.selectedBackground) {
         Scaffold(
             containerColor = Color.Transparent,
@@ -91,7 +95,7 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .padding(horizontal = 24.dp),
-                contentPadding = PaddingValues(bottom = 85.dp),
+                contentPadding = PaddingValues(bottom = bottomPadding),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 // Work Days
@@ -275,7 +279,7 @@ fun SettingsScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(240.dp)
+                                .height(230.dp)
                                 .verticalScroll(holidaysScrollState),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {

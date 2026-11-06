@@ -222,7 +222,19 @@ fun WorkTimeScreenContent(
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(Modifier.height(50.dp))
+                Box(
+                    modifier = Modifier.height(50.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "At " + uiState.endTime.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.US)),
+                        color = RetirementColors.Cream,
+                        fontFamily = PlayfairDisplay,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 20.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
 
                 val isDatePassed = remember(uiState.retirementDate, uiState.endTime, uiState.timeLeft) {
                     LocalDateTime.now().isAfter(uiState.retirementDate.atTime(uiState.endTime))
