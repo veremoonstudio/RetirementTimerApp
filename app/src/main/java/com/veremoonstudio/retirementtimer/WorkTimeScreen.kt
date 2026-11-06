@@ -40,6 +40,7 @@ import com.veremoonstudio.retirementtimer.BuildConfig
 import com.veremoonstudio.retirementtimer.ui.theme.*
 import kotlinx.coroutines.delay
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -223,8 +224,18 @@ fun WorkTimeScreenContent(
 
                 Spacer(Modifier.height(50.dp))
 
+                val isDatePassed = remember(uiState.retirementDate, uiState.endTime, uiState.timeLeft) {
+                    LocalDateTime.now().isAfter(uiState.retirementDate.atTime(uiState.endTime))
+                }
+                val counterTitle = when {
+                    isDatePassed && uiState.isWorkTimeMode -> stringResource(R.string.work_time_past)
+                    isDatePassed && !uiState.isWorkTimeMode -> stringResource(R.string.total_time_past)
+                    !isDatePassed && uiState.isWorkTimeMode -> stringResource(R.string.work_time_left)
+                    else -> stringResource(R.string.total_time_left)
+                }
+
                 Text(
-                    text = if (uiState.isWorkTimeMode) stringResource(R.string.work_time_left) else stringResource(R.string.total_time_left),
+                    text = counterTitle,
                     color = RetirementColors.Gold,
                     fontFamily = PlayfairDisplay,
                     fontWeight = FontWeight.SemiBold,
