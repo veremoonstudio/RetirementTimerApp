@@ -7,7 +7,7 @@
     <string name="work_time_left">Work Time Left</string>
     <string name="total_time_left">Total Time Left</string>
     <string name="work_time_past">Work Time Elapsed</string>
-    <string name="total_time_past">Total Time Elapsed</string>
+    <string name="total_time_past">Total Elapsed Time</string>
     <string name="days">DAYS</string>
     <string name="hrs">HRS</string>
     <string name="min">MIN</string>

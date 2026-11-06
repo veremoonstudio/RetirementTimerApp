@@ -305,7 +305,8 @@ fun WorkTimeScreenContent(
                     colors = DatePickerDefaults.colors(
                         selectedDayContainerColor = Color.Transparent,
                         selectedDayContentColor = RetirementColors.Cream,
-                        todayDateBorderColor = Color.Transparent
+                        todayDateBorderColor = RetirementColors.Gold,
+                        todayContentColor = RetirementColors.Gold
                     )
                 )
             }
