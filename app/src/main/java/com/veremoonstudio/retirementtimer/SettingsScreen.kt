@@ -91,6 +91,7 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .padding(horizontal = 24.dp),
+                contentPadding = PaddingValues(bottom = 85.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 // Work Days
@@ -268,47 +269,57 @@ fun SettingsScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(2.dp))
 
-                        uiState.holidays.forEach { holiday ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .combinedClickable(
-                                        onClick = {
+                        val holidaysScrollState = rememberScrollState()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(240.dp)
+                                .verticalScroll(holidaysScrollState),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            uiState.holidays.forEach { holiday ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .combinedClickable(
+                                            onClick = {
+                                                val newList = uiState.holidays.map {
+                                                    if (it == holiday) it.copy(isEnabled = !it.isEnabled) else it
+                                                }
+                                                viewModel.updateHolidays(newList)
+                                            },
+                                            onLongClick = { holidayToEdit = holiday }
+                                        )
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "${holiday.name} (${holiday.month}/${holiday.day})",
+                                        style = TextStyle(
+                                            fontFamily = PlayfairDisplay,
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = RetirementColors.Cream
+                                        ),
+                                        modifier = Modifier.weight(1f, fill = false)
+                                    )
+                                    Checkbox(
+                                        checked = holiday.isEnabled,
+                                        onCheckedChange = { checked ->
                                             val newList = uiState.holidays.map {
-                                                if (it == holiday) it.copy(isEnabled = !it.isEnabled) else it
+                                                if (it == holiday) it.copy(isEnabled = checked) else it
                                             }
                                             viewModel.updateHolidays(newList)
                                         },
-                                        onLongClick = { holidayToEdit = holiday }
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = RetirementColors.Gold,
+                                            uncheckedColor = RetirementColors.Gold.copy(alpha = 0.5f)
+                                        )
                                     )
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "${holiday.name} (${holiday.month}/${holiday.day})",
-                                    style = TextStyle(
-                                        fontFamily = PlayfairDisplay,
-                                        fontSize = 17.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = RetirementColors.Cream
-                                    )
-                                )
-                                Checkbox(
-                                    checked = holiday.isEnabled,
-                                    onCheckedChange = { checked ->
-                                        val newList = uiState.holidays.map {
-                                            if (it == holiday) it.copy(isEnabled = checked) else it
-                                        }
-                                        viewModel.updateHolidays(newList)
-                                    },
-                                    colors = CheckboxDefaults.colors(
-                                        checkedColor = RetirementColors.Gold,
-                                        uncheckedColor = RetirementColors.Gold.copy(alpha = 0.5f)
-                                    )
-                                )
+                                }
                             }
                         }
                     }
@@ -364,7 +375,7 @@ fun SettingsScreen(
                     }
                 }
 
-                item { Spacer(modifier = Modifier.height(110.dp)) }
+
             }
         }
 
