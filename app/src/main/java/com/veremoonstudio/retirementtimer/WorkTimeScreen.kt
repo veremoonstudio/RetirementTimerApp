@@ -83,6 +83,7 @@ fun WorkTimeScreenContent(
     MarbleBackground(selectedBackground = uiState.selectedBackground) {
         Scaffold(
             containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 Row(
                     modifier = Modifier
@@ -230,10 +231,10 @@ fun WorkTimeScreenContent(
                     Text(
                         text = ("AT " + uiState.endTime.format(DateTimeFormatter.ofPattern("h:mm a", Locale.US))).uppercase(Locale.US),
                         color = RetirementColors.Cream,
-                        fontFamily = FontFamily.Default,
-                        fontWeight = FontWeight.Medium,
+                        fontFamily = CinzelFontFamily,
+                        fontWeight = FontWeight.Normal,
                         fontSize = 17.sp,
-                        letterSpacing = 1.sp,
+                        letterSpacing = 1.5.sp,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -269,16 +270,18 @@ fun WorkTimeScreenContent(
         }
 
         if (showDatePicker) {
+            val initialMillis = remember { uiState.retirementDate.toEpochDay() * 24 * 60 * 60 * 1000 }
             val datePickerState = rememberDatePickerState(
-                initialSelectedDateMillis = null,
-                initialDisplayedMonthMillis = uiState.retirementDate.toEpochDay() * 24 * 60 * 60 * 1000
+                initialSelectedDateMillis = initialMillis
             )
 
             LaunchedEffect(datePickerState.selectedDateMillis) {
                 datePickerState.selectedDateMillis?.let { millis ->
-                    pendingDate = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
-                    showDatePicker = false
-                    showTimePicker = true
+                    if (millis != initialMillis) {
+                        pendingDate = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
+                        showDatePicker = false
+                        showTimePicker = true
+                    }
                 }
             }
 
@@ -286,7 +289,7 @@ fun WorkTimeScreenContent(
                 onDismissRequest = { showDatePicker = false },
                 confirmButton = {
                     TextButton(onClick = {
-                        val millis = datePickerState.selectedDateMillis ?: (uiState.retirementDate.toEpochDay() * 24 * 60 * 60 * 1000)
+                        val millis = datePickerState.selectedDateMillis ?: initialMillis
                         pendingDate = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
                         showDatePicker = false
                         showTimePicker = true
@@ -303,10 +306,21 @@ fun WorkTimeScreenContent(
                 DatePicker(
                     state = datePickerState,
                     colors = DatePickerDefaults.colors(
+                        containerColor = RetirementColors.Background,
+                        titleContentColor = RetirementColors.Gold,
+                        headlineContentColor = RetirementColors.Gold,
+                        weekdayContentColor = RetirementColors.Gold,
+                        subheadContentColor = RetirementColors.Gold,
+                        yearContentColor = RetirementColors.Cream,
+                        currentYearContentColor = RetirementColors.Gold,
+                        selectedYearContentColor = RetirementColors.Gold,
+                        selectedYearContainerColor = Color.Transparent,
+                        dayContentColor = RetirementColors.Cream,
+                        disabledDayContentColor = RetirementColors.Cream.copy(alpha = 0.3f),
                         selectedDayContainerColor = Color.Transparent,
                         selectedDayContentColor = RetirementColors.Cream,
-                        todayDateBorderColor = RetirementColors.Gold,
-                        todayContentColor = RetirementColors.Gold
+                        todayContentColor = RetirementColors.Gold,
+                        todayDateBorderColor = RetirementColors.Gold
                     )
                 )
             }

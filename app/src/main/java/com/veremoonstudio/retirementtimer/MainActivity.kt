@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
             MobileAds.initialize(this) {}
         } catch (_: Throwable) {}
         try {
+            WindowCompat.setDecorFitsSystemWindows(window, false)
             enableEdgeToEdge(
                 statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
                 navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)

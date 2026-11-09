@@ -27,6 +27,10 @@ val CormorantGaramond = FontFamily(
 
 val PlayfairFontFamily = PlayfairDisplay
 val CormorantFontFamily = CormorantGaramond
+val CinzelFontFamily = FontFamily(
+    Font(R.font.cinzel, FontWeight.Normal),
+    Font(R.font.cinzel, FontWeight.Bold)
+)
 val InterFontFamily = FontFamily.SansSerif
 val FrauncesFontFamily = FontFamily.Serif
 

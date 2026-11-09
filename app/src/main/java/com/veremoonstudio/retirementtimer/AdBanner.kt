@@ -36,6 +36,7 @@ fun BottomAdBanner(height: Dp = 100.dp) {
                     View(context)
                 }
             },
+            update = {},
             modifier = Modifier.fillMaxWidth()
         )
     }
