@@ -59,7 +59,7 @@ private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
 fun calculateWidgetTimeLeft(settings: SettingsData): TimeLeftData {
     val now = LocalDateTime.now()
-    val retirementDate = if (settings.retirementDateEpoch > 0L) LocalDate.ofEpochDay(settings.retirementDateEpoch) else LocalDate.now().plusYears(5)
+    val retirementDate = if (settings.retirementDateEpoch != -1L) LocalDate.ofEpochDay(settings.retirementDateEpoch) else LocalDate.now().plusYears(5)
     val endTime = try { LocalTime.parse(settings.endTimeStr) } catch (_: Exception) { LocalTime.of(18, 0) }
 
     if (!settings.isWorkTimeMode) {
@@ -82,8 +82,8 @@ fun calculateWidgetTimeLeft(settings: SettingsData): TimeLeftData {
     }
 
     val startTime = try { LocalTime.parse(settings.startTimeStr) } catch (_: Exception) { LocalTime.of(9, 0) }
-    val workSecondsPerDay = Duration.between(startTime, endTime).seconds
-    if (workSecondsPerDay <= 0) return TimeLeftData("00", "00", "00", "00")
+    val rawWorkSeconds = Duration.between(startTime, endTime).seconds
+    val workSecondsPerDay = if (rawWorkSeconds > 0) rawWorkSeconds else 32400L
 
     val targetDateTime = retirementDate.atTime(endTime)
     val today = now.toLocalDate()
@@ -94,7 +94,7 @@ fun calculateWidgetTimeLeft(settings: SettingsData): TimeLeftData {
         var cursor = retirementDate.plusDays(1)
         val maxCursor = today.minusDays(1)
         var iterations = 0
-        while (!cursor.isAfter(maxCursor) && iterations < 3650) {
+        while (!cursor.isAfter(maxCursor) && iterations < 36500) {
             if (cursor.dayOfWeek in workDaysSet && settings.holidays.none { it.isEnabled && it.month == cursor.monthValue && it.day == cursor.dayOfMonth }) {
                 pastWorkDays++
             }
@@ -103,10 +103,10 @@ fun calculateWidgetTimeLeft(settings: SettingsData): TimeLeftData {
         }
 
         var todaySeconds = 0L
-        if (today.dayOfWeek in workDaysSet && !today.isEqual(retirementDate) && settings.holidays.none { it.isEnabled && it.month == today.monthValue && it.day == today.dayOfMonth }) {
+        if (today.isAfter(retirementDate) && today.dayOfWeek in workDaysSet && settings.holidays.none { it.isEnabled && it.month == today.monthValue && it.day == today.dayOfMonth }) {
             val nowTime = now.toLocalTime()
             if (nowTime.isAfter(startTime)) {
-                val effectiveEnd = if (nowTime.isAfter(endTime)) endTime else nowTime
+                val effectiveEnd = if (nowTime.isAfter(endTime) && endTime > startTime) endTime else nowTime
                 todaySeconds = Duration.between(startTime, effectiveEnd).seconds
             }
         }
@@ -213,7 +213,7 @@ class RetirementGlanceWidget : GlanceAppWidget() {
         }
 
         val retirementDate = try {
-            if (settings.retirementDateEpoch > 0L) LocalDate.ofEpochDay(settings.retirementDateEpoch) else LocalDate.now().plusYears(5)
+            if (settings.retirementDateEpoch != -1L) LocalDate.ofEpochDay(settings.retirementDateEpoch) else LocalDate.now().plusYears(5)
         } catch (_: Throwable) {
             LocalDate.now().plusYears(5)
         }
@@ -231,7 +231,7 @@ class RetirementGlanceWidget : GlanceAppWidget() {
                             if (json != null) {
                                 val newSettings = jsonParser.decodeFromString<SettingsData>(json)
                                 currentSettings.value = newSettings
-                                currentRetirementDate.value = if (newSettings.retirementDateEpoch > 0L) {
+                                currentRetirementDate.value = if (newSettings.retirementDateEpoch != -1L) {
                                     LocalDate.ofEpochDay(newSettings.retirementDateEpoch)
                                 } else {
                                     LocalDate.now().plusYears(5)

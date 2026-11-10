@@ -29,8 +29,9 @@ class RetirementWidgetReceiver : GlanceAppWidgetReceiver() {
                 )
                 if (appWidgetIds.isEmpty()) return
 
+                val widgetAction = "${context.packageName}.ACTION_UPDATE_WIDGET"
                 val intent = Intent(context, RetirementWidgetReceiver::class.java).apply {
-                    action = ACTION_UPDATE_WIDGET
+                    action = widgetAction
                     putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
                 }
                 val pendingIntent = PendingIntent.getBroadcast(
@@ -39,23 +40,46 @@ class RetirementWidgetReceiver : GlanceAppWidgetReceiver() {
                     intent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
+
+                val showIntent = Intent(context, MainActivity::class.java)
+                val showPendingIntent = PendingIntent.getActivity(
+                    context,
+                    0,
+                    showIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+
                 val now = System.currentTimeMillis()
                 val nextMinute = now + (60000 - (now % 60000)) + 100L
 
                 try {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        if (alarmManager.canScheduleExactAlarms()) {
-                            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
-                        } else {
-                            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
-                        }
+                    val canScheduleExact = try {
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && alarmManager.canScheduleExactAlarms()
+                    } catch (_: Throwable) {
+                        false
+                    }
+
+                    if (canScheduleExact) {
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        alarmManager.setAlarmClock(
+                            AlarmManager.AlarmClockInfo(nextMinute, showPendingIntent),
+                            pendingIntent
+                        )
                     } else {
                         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
                     }
-                } catch (_: SecurityException) {
+                } catch (_: Throwable) {
                     try {
-                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
-                    } catch (_: Throwable) {}
+                        alarmManager.setAlarmClock(
+                            AlarmManager.AlarmClockInfo(nextMinute, showPendingIntent),
+                            pendingIntent
+                        )
+                    } catch (_: Throwable) {
+                        try {
+                            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                        } catch (_: Throwable) {}
+                    }
                 }
             } catch (_: Throwable) {}
         }
@@ -66,19 +90,21 @@ class RetirementWidgetReceiver : GlanceAppWidgetReceiver() {
 
         val action = intent.action
         if (action == ACTION_UPDATE_WIDGET ||
+            action?.endsWith(".ACTION_UPDATE_WIDGET") == true ||
+            action == AppWidgetManager.ACTION_APPWIDGET_UPDATE ||
             action == Intent.ACTION_BOOT_COMPLETED ||
             action == Intent.ACTION_MY_PACKAGE_REPLACED ||
             action == Intent.ACTION_TIME_CHANGED ||
             action == Intent.ACTION_TIMEZONE_CHANGED ||
             action == Intent.ACTION_USER_PRESENT) {
-            val pendingResult = goAsync()
+            val pendingResult = try { goAsync() } catch (_: Throwable) { null }
             CoroutineScope(Dispatchers.Main).launch {
                 try {
                     RetirementGlanceWidget().updateAll(context)
                 } catch (_: Throwable) {
                 } finally {
                     scheduleNextMinuteAlarm(context)
-                    pendingResult.finish()
+                    try { pendingResult?.finish() } catch (_: Throwable) {}
                 }
             }
         } else {

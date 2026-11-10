@@ -41,7 +41,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
                     if (json != null) {
                         try {
                             val data = jsonParser.decodeFromString<SettingsData>(json)
-                            val targetDate = if (data.retirementDateEpoch > 0L) LocalDate.ofEpochDay(data.retirementDateEpoch) else LocalDate.now().plusYears(5)
+                            val targetDate = if (data.retirementDateEpoch != -1L) LocalDate.ofEpochDay(data.retirementDateEpoch) else LocalDate.now().plusYears(5)
                             val holidaysList = if (!json.contains("\"holidays\"") || data.holidays.size <= 2) {
                                 defaultHolidays
                             } else {
@@ -182,8 +182,8 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
     private fun calculateWorkTime(now: LocalDateTime, retirementDate: LocalDate, state: WorkTimeUiState): TimeLeftData {
         val startTime = state.startTime
         val endTime = state.endTime
-        val workSecondsPerDay = Duration.between(startTime, endTime).seconds
-        if (workSecondsPerDay <= 0) return TimeLeftData("00", "00", "00", "00")
+        val rawWorkSeconds = Duration.between(startTime, endTime).seconds
+        val workSecondsPerDay = if (rawWorkSeconds > 0) rawWorkSeconds else 32400L
 
         val targetDateTime = retirementDate.atTime(endTime)
         val today = now.toLocalDate()
@@ -193,17 +193,17 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
             var cursor = retirementDate.plusDays(1)
             val maxCursor = today.minusDays(1)
             var iterations = 0
-            while (!cursor.isAfter(maxCursor) && iterations < 3650) {
+            while (!cursor.isAfter(maxCursor) && iterations < 36500) {
                 if (isWorkDay(cursor, state)) pastWorkDays++
                 cursor = cursor.plusDays(1)
                 iterations++
             }
 
             var todaySeconds = 0L
-            if (isWorkDay(today, state) && !today.isEqual(retirementDate)) {
+            if (today.isAfter(retirementDate) && isWorkDay(today, state)) {
                 val nowTime = now.toLocalTime()
                 if (nowTime.isAfter(startTime)) {
-                    val effectiveEnd = if (nowTime.isAfter(endTime)) endTime else nowTime
+                    val effectiveEnd = if (nowTime.isAfter(endTime) && endTime > startTime) endTime else nowTime
                     todaySeconds = Duration.between(startTime, effectiveEnd).seconds
                 }
             }

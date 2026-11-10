@@ -1,6 +1,7 @@
 package com.veremoonstudio.retirementtimer
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,6 +27,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -270,59 +274,68 @@ fun WorkTimeScreenContent(
         }
 
         if (showDatePicker) {
-            val initialMillis = remember { uiState.retirementDate.toEpochDay() * 24 * 60 * 60 * 1000 }
+            val initialMillis = remember { uiState.retirementDate.toEpochDay() * 86400000L }
             val datePickerState = rememberDatePickerState(
                 initialSelectedDateMillis = initialMillis
             )
-
-            LaunchedEffect(datePickerState.selectedDateMillis) {
-                datePickerState.selectedDateMillis?.let { millis ->
-                    if (millis != initialMillis) {
-                        pendingDate = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
-                        showDatePicker = false
-                        showTimePicker = true
-                    }
-                }
-            }
 
             DatePickerDialog(
                 onDismissRequest = { showDatePicker = false },
                 confirmButton = {
                     TextButton(onClick = {
                         val millis = datePickerState.selectedDateMillis ?: initialMillis
-                        pendingDate = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
+                        pendingDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
                         showDatePicker = false
                         showTimePicker = true
                     }) {
-                        Text(stringResource(R.string.ok))
+                        Text(stringResource(R.string.ok), color = RetirementColors.Gold)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDatePicker = false }) {
-                        Text(stringResource(R.string.cancel))
+                        Text(stringResource(R.string.cancel), color = RetirementColors.Cream)
                     }
                 }
             ) {
-                DatePicker(
-                    state = datePickerState,
-                    colors = DatePickerDefaults.colors(
-                        containerColor = RetirementColors.Background,
-                        titleContentColor = RetirementColors.Gold,
-                        headlineContentColor = RetirementColors.Gold,
-                        weekdayContentColor = RetirementColors.Gold,
-                        subheadContentColor = RetirementColors.Gold,
-                        yearContentColor = RetirementColors.Cream,
-                        currentYearContentColor = RetirementColors.Gold,
-                        selectedYearContentColor = RetirementColors.Gold,
-                        selectedYearContainerColor = Color.Transparent,
-                        dayContentColor = RetirementColors.Cream,
-                        disabledDayContentColor = RetirementColors.Cream.copy(alpha = 0.3f),
-                        selectedDayContainerColor = Color.Transparent,
-                        selectedDayContentColor = RetirementColors.Cream,
-                        todayContentColor = RetirementColors.Gold,
-                        todayDateBorderColor = RetirementColors.Gold
+                Box(
+                    modifier = Modifier.pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent(PointerEventPass.Final)
+                                if (event.type == PointerEventType.Release) {
+                                    val position = event.changes.firstOrNull()?.position
+                                    if (position != null && position.y >= size.height * 0.35f) {
+                                        val millis = datePickerState.selectedDateMillis ?: initialMillis
+                                        pendingDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
+                                        showDatePicker = false
+                                        showTimePicker = true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    DatePicker(
+                        state = datePickerState,
+                        colors = DatePickerDefaults.colors(
+                            containerColor = RetirementColors.Background,
+                            titleContentColor = RetirementColors.Gold,
+                            headlineContentColor = RetirementColors.Gold,
+                            weekdayContentColor = RetirementColors.Gold,
+                            subheadContentColor = RetirementColors.Gold,
+                            yearContentColor = RetirementColors.Cream,
+                            currentYearContentColor = RetirementColors.Gold,
+                            selectedYearContentColor = Color(0xFF111315),
+                            selectedYearContainerColor = RetirementColors.Gold,
+                            dayContentColor = RetirementColors.Cream,
+                            disabledDayContentColor = RetirementColors.Cream.copy(alpha = 0.3f),
+                            selectedDayContainerColor = RetirementColors.Gold,
+                            selectedDayContentColor = Color(0xFF111315),
+                            todayContentColor = RetirementColors.Gold,
+                            todayDateBorderColor = RetirementColors.Gold
+                        )
                     )
-                )
+                }
             }
         }
 
@@ -333,7 +346,9 @@ fun WorkTimeScreenContent(
                     pendingDate?.let { date ->
                         onUpdateRetirementDate(date)
                     }
-                    onUpdateTimes(uiState.startTime, LocalTime.of(hour, minute))
+                    val targetTime = LocalTime.of(hour, minute)
+                    val validEnd = if (targetTime > uiState.startTime) targetTime else uiState.startTime.plusHours(8)
+                    onUpdateTimes(uiState.startTime, validEnd)
                     showTimePicker = false
                 },
                 initialHour = uiState.endTime.hour,

@@ -20,6 +20,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.focus.onFocusChanged
@@ -35,6 +40,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Velocity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.veremoonstudio.retirementtimer.ui.theme.*
 import java.time.DayOfWeek
@@ -277,10 +283,27 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(2.dp))
 
                         val holidaysScrollState = rememberScrollState()
+                        val stopNestedScrollConnection = remember {
+                            object : NestedScrollConnection {
+                                override fun onPostScroll(
+                                    consumed: Offset,
+                                    available: Offset,
+                                    source: NestedScrollSource
+                                ): Offset {
+                                    return Offset(0f, available.y)
+                                }
+
+                                override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                                    return Velocity(0f, available.y)
+                                }
+                            }
+                        }
+
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(230.dp)
+                                .nestedScroll(stopNestedScrollConnection)
                                 .verticalScroll(holidaysScrollState),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
@@ -486,6 +509,7 @@ fun TimePickerDialog(
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                 TimePicker(
                     state = state,
+                    modifier = Modifier.scale(0.85f),
                     colors = TimePickerDefaults.colors(
                         clockDialColor = Color.White.copy(alpha = 0.05f),
                         clockDialSelectedContentColor = RetirementColors.Background,
@@ -584,7 +608,26 @@ fun AddHolidayDialog(
                 }
             }
         ) {
-            DatePicker(state = datePickerState)
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = RetirementColors.Background,
+                    titleContentColor = RetirementColors.Gold,
+                    headlineContentColor = RetirementColors.Gold,
+                    weekdayContentColor = RetirementColors.Gold,
+                    subheadContentColor = RetirementColors.Gold,
+                    yearContentColor = RetirementColors.Cream,
+                    currentYearContentColor = RetirementColors.Gold,
+                    selectedYearContentColor = Color(0xFF111315),
+                    selectedYearContainerColor = RetirementColors.Gold,
+                    dayContentColor = RetirementColors.Cream,
+                    disabledDayContentColor = RetirementColors.Cream.copy(alpha = 0.3f),
+                    selectedDayContainerColor = RetirementColors.Gold,
+                    selectedDayContentColor = Color(0xFF111315),
+                    todayContentColor = RetirementColors.Gold,
+                    todayDateBorderColor = RetirementColors.Gold
+                )
+            )
         }
     }
 }
