@@ -300,15 +300,31 @@ fun WorkTimeScreenContent(
                 Box(
                     modifier = Modifier.pointerInput(Unit) {
                         awaitPointerEventScope {
+                            var isSwipe = false
                             while (true) {
                                 val event = awaitPointerEvent(PointerEventPass.Final)
-                                if (event.type == PointerEventType.Release) {
-                                    val position = event.changes.firstOrNull()?.position
-                                    if (position != null && position.y >= size.height * 0.35f) {
-                                        val millis = datePickerState.selectedDateMillis ?: initialMillis
-                                        pendingDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
-                                        showDatePicker = false
-                                        showTimePicker = true
+                                when (event.type) {
+                                    PointerEventType.Press -> {
+                                        isSwipe = false
+                                    }
+                                    PointerEventType.Move -> {
+                                        val change = event.changes.firstOrNull()
+                                        if (change != null) {
+                                            val dragDistance = (change.position - change.previousPosition).getDistance()
+                                            if (dragDistance > 8f) {
+                                                isSwipe = true
+                                            }
+                                        }
+                                    }
+                                    PointerEventType.Release -> {
+                                        val position = event.changes.firstOrNull()?.position
+                                        if (!isSwipe && position != null && position.y >= size.height * 0.35f) {
+                                            val millis = datePickerState.selectedDateMillis ?: initialMillis
+                                            pendingDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
+                                            showDatePicker = false
+                                            showTimePicker = true
+                                        }
+                                        isSwipe = false
                                     }
                                 }
                             }
