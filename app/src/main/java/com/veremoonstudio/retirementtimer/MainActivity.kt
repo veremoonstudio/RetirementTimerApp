@@ -10,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -28,7 +29,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import android.content.pm.ActivityInfo
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.MobileAds
+import com.google.android.ump.ConsentRequestParameters
+import com.google.android.ump.UserMessagingPlatform
 import com.veremoonstudio.retirementtimer.ui.theme.RetirementTimerAppTheme
 import kotlinx.coroutines.delay
 
@@ -46,19 +56,14 @@ class MainActivity : ComponentActivity() {
         try {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         } catch (_: Throwable) {}
-        try {
-            MobileAds.initialize(this) {}
-        } catch (_: Throwable) {}
+        initUmpConsentAndAds()
         try {
             WindowCompat.setDecorFitsSystemWindows(window, false)
             enableEdgeToEdge(
                 statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
                 navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
             )
-            WindowCompat.getInsetsController(window, window.decorView).apply {
-                hide(WindowInsetsCompat.Type.navigationBars())
-                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
+            hideSystemNavigationBars()
         } catch (_: Throwable) {}
         setContent {
             RetirementTimerAppTheme {
@@ -67,14 +72,68 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            hideSystemNavigationBars()
+        }
+    }
+
     override fun onResume() {
         super.onResume()
+        hideSystemNavigationBars()
         updateWidget()
     }
 
     override fun onPause() {
         super.onPause()
         updateWidget()
+    }
+
+    private fun hideSystemNavigationBars() {
+        try {
+            val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+            windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+        } catch (_: Throwable) {}
+    }
+
+    private fun initUmpConsentAndAds() {
+        try {
+            val reqConfig = MobileAds.getRequestConfiguration().toBuilder()
+                .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR, "0B32F41C2E97D40CB883361B199BE7F5"))
+                .build()
+            MobileAds.setRequestConfiguration(reqConfig)
+        } catch (_: Throwable) {}
+
+        try {
+            val params = ConsentRequestParameters.Builder().build()
+            val consentInformation = UserMessagingPlatform.getConsentInformation(this)
+            consentInformation.requestConsentInfoUpdate(
+                this,
+                params,
+                {
+                    UserMessagingPlatform.loadAndShowConsentFormIfRequired(this) { _ ->
+                        if (consentInformation.canRequestAds()) {
+                            try {
+                                MobileAds.initialize(this) {}
+                            } catch (_: Throwable) {}
+                        }
+                    }
+                },
+                { _ ->
+                    if (consentInformation.canRequestAds()) {
+                        try {
+                            MobileAds.initialize(this) {}
+                        } catch (_: Throwable) {}
+                    }
+                }
+            )
+        } catch (_: Throwable) {
+            try {
+                MobileAds.initialize(this) {}
+            } catch (_: Throwable) {}
+        }
     }
 
     private fun updateWidget() {
@@ -102,14 +161,20 @@ fun MainNavigation(
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
-            startDestination = "splash"
+            startDestination = "splash",
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+            popExitTransition = { fadeOut(animationSpec = tween(300)) }
         ) {
             composable("splash") {
                 SplashScreen(
                     onSplashFinished = {
-                        navController.navigate("main") {
-                            popUpTo("splash") { inclusive = true }
-                        }
+                        try {
+                            navController.navigate("main") {
+                                popUpTo("splash") { inclusive = true }
+                            }
+                        } catch (_: Throwable) {}
                     }
                 )
             }
@@ -142,12 +207,16 @@ fun MainNavigation(
             }
         }
 
-        if (currentRoute != "splash" && currentRoute != "premium" && !isPremium) {
-            Box(
-                modifier = Modifier.align(Alignment.BottomCenter)
-            ) {
-                BottomAdBanner(height = 100.dp)
-            }
+        val showBanner = currentRoute in listOf("main", "settings", "background")
+        AnimatedVisibility(
+            visible = showBanner && !isPremium,
+            enter = fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { it },
+            exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(animationSpec = tween(300)) { it },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+        ) {
+            BottomAdBanner(height = 100.dp)
         }
     }
 }
