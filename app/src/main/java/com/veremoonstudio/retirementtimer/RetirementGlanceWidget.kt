@@ -60,106 +60,25 @@ private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 fun calculateWidgetTimeLeft(settings: SettingsData): TimeLeftData {
     val now = LocalDateTime.now()
     val retirementDate = if (settings.retirementDateEpoch != -1L) LocalDate.ofEpochDay(settings.retirementDateEpoch) else LocalDate.now().plusYears(5)
+    val startTime = try { LocalTime.parse(settings.startTimeStr) } catch (_: Exception) { LocalTime.of(9, 0) }
     val endTime = try { LocalTime.parse(settings.endTimeStr) } catch (_: Exception) { LocalTime.of(18, 0) }
 
-    if (!settings.isWorkTimeMode) {
-        val target = retirementDate.atTime(endTime)
-        if (now.isAfter(target)) {
-            val duration = Duration.between(target, now)
-            val days = duration.toDays()
-            val hours = duration.toHours() % 24
-            val minutes = duration.toMinutes() % 60
-            val seconds = duration.seconds % 60
-            val formattedDays = String.format(Locale.US, "%02d", days)
-            return TimeLeftData(days = formattedDays, hours = String.format(Locale.US, "%02d", hours), minutes = String.format(Locale.US, "%02d", minutes), seconds = String.format(Locale.US, "%02d", seconds))
-        }
-        val duration = Duration.between(now, target)
-        val days = duration.toDays()
-        val hours = duration.toHours() % 24
-        val minutes = duration.toMinutes() % 60
-        val seconds = duration.seconds % 60
-        return TimeLeftData(days = String.format(Locale.US, "%02d", days), hours = String.format(Locale.US, "%02d", hours), minutes = String.format(Locale.US, "%02d", minutes), seconds = String.format(Locale.US, "%02d", seconds))
+    val state = WorkTimeUiState(
+        isWorkTimeMode = settings.isWorkTimeMode,
+        retirementDate = retirementDate,
+        workDays = settings.workDays.toSet(),
+        startTime = startTime,
+        endTime = endTime,
+        vacationHours = settings.vacationHours,
+        holidays = settings.holidays.map { h -> Holiday(h.name, h.month, h.day, h.isEnabled) },
+        selectedBackground = settings.selectedBackground
+    )
+
+    return if (settings.isWorkTimeMode) {
+        WorkTimeCalculator.calculateWorkTime(now, retirementDate, state)
+    } else {
+        WorkTimeCalculator.calculateTotalTime(now, retirementDate, endTime)
     }
-
-    val startTime = try { LocalTime.parse(settings.startTimeStr) } catch (_: Exception) { LocalTime.of(9, 0) }
-    val rawWorkSeconds = Duration.between(startTime, endTime).seconds
-    val workSecondsPerDay = if (rawWorkSeconds > 0) rawWorkSeconds else 32400L
-
-    val targetDateTime = retirementDate.atTime(endTime)
-    val today = now.toLocalDate()
-    val workDaysSet = settings.workDays.toSet()
-
-    if (now.isAfter(targetDateTime)) {
-        var pastWorkDays = 0L
-        var cursor = retirementDate.plusDays(1)
-        val maxCursor = today.minusDays(1)
-        var iterations = 0
-        while (!cursor.isAfter(maxCursor) && iterations < 36500) {
-            if (cursor.dayOfWeek in workDaysSet && settings.holidays.none { it.isEnabled && it.month == cursor.monthValue && it.day == cursor.dayOfMonth }) {
-                pastWorkDays++
-            }
-            cursor = cursor.plusDays(1)
-            iterations++
-        }
-
-        var todaySeconds = 0L
-        if (today.isAfter(retirementDate) && today.dayOfWeek in workDaysSet && settings.holidays.none { it.isEnabled && it.month == today.monthValue && it.day == today.dayOfMonth }) {
-            val nowTime = now.toLocalTime()
-            if (nowTime.isAfter(startTime)) {
-                val effectiveEnd = if (nowTime.isAfter(endTime) && endTime > startTime) endTime else nowTime
-                todaySeconds = Duration.between(startTime, effectiveEnd).seconds
-            }
-        }
-
-        var totalPastWorkSeconds = (pastWorkDays * workSecondsPerDay) + todaySeconds
-        if (totalPastWorkSeconds < 0) totalPastWorkSeconds = 0
-
-        val daysPast = totalPastWorkSeconds / workSecondsPerDay
-        var remainder = totalPastWorkSeconds % workSecondsPerDay
-
-        val hoursPast = remainder / 3600
-        remainder %= 3600
-        val minutesPast = remainder / 60
-        val secondsPast = remainder % 60
-
-        val formattedDays = String.format(Locale.US, "%02d", daysPast)
-
-        return TimeLeftData(days = formattedDays, hours = String.format(Locale.US, "%02d", hoursPast), minutes = String.format(Locale.US, "%02d", minutesPast), seconds = String.format(Locale.US, "%02d", secondsPast))
-    }
-
-    var futureWorkDays = 0L
-    var cursor = today.plusDays(1)
-    var iterations = 0
-    while (!cursor.isAfter(retirementDate) && iterations < 36500) {
-        if (cursor.dayOfWeek in workDaysSet && settings.holidays.none { it.isEnabled && it.month == cursor.monthValue && it.day == cursor.dayOfMonth }) {
-            futureWorkDays++
-        }
-        cursor = cursor.plusDays(1)
-        iterations++
-    }
-
-    var todaySeconds = 0L
-    if (today.dayOfWeek in workDaysSet && settings.holidays.none { it.isEnabled && it.month == today.monthValue && it.day == today.dayOfMonth }) {
-        val nowTime = now.toLocalTime()
-        if (nowTime.isBefore(endTime)) {
-            val effectiveStart = if (nowTime.isBefore(startTime)) startTime else nowTime
-            todaySeconds = Duration.between(effectiveStart, endTime).seconds
-        }
-    }
-
-    var totalWorkSeconds = (futureWorkDays * workSecondsPerDay) + todaySeconds
-    totalWorkSeconds -= (settings.vacationHours * 3600L)
-    if (totalWorkSeconds < 0) totalWorkSeconds = 0
-
-    val days = totalWorkSeconds / workSecondsPerDay
-    var remainder = totalWorkSeconds % workSecondsPerDay
-
-    val hours = remainder / 3600
-    remainder %= 3600
-    val minutes = remainder / 60
-    val seconds = remainder % 60
-
-    return TimeLeftData(days = String.format(Locale.US, "%02d", days), hours = String.format(Locale.US, "%02d", hours), minutes = String.format(Locale.US, "%02d", minutes), seconds = String.format(Locale.US, "%02d", seconds))
 }
 
 class WidgetClickCallback : ActionCallback {
