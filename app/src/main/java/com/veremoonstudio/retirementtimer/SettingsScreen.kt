@@ -191,7 +191,7 @@ fun SettingsScreen(
                         )
 
                         val totalVacDays = uiState.vacationDaysSet.size
-                        if (totalVacDays > 0) {
+                        if (uiState.vacationPeriods.size > 1 && totalVacDays > 0) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -592,7 +592,7 @@ fun SettingsScreen(
 
         if (showVacationDatePicker) {
             val editingPeriod = uiState.vacationPeriods.find { it.id == editingVacationPeriodId }
-            val otherVacationDays = remember(uiState.vacationPeriods, editingVacationPeriodId, uiState.workDays, uiState.holidays) {
+            val otherVacationAllDays = remember(uiState.vacationPeriods, editingVacationPeriodId) {
                 val set = mutableSetOf<LocalDate>()
                 uiState.vacationPeriods.filter { it.id != editingVacationPeriodId }.forEach { p ->
                     val first = if (p.startDate.isBefore(p.endDate)) p.startDate else p.endDate
@@ -600,9 +600,7 @@ fun SettingsScreen(
                     var cursor = first
                     var count = 0
                     while (!cursor.isAfter(last) && count < 365) {
-                        if (WorkTimeCalculator.isWorkDay(cursor, uiState.workDays, uiState.holidays)) {
-                            set.add(cursor)
-                        }
+                        set.add(cursor)
                         cursor = cursor.plusDays(1)
                         count++
                     }
@@ -613,7 +611,7 @@ fun SettingsScreen(
             CompactVacationDateRangePickerDialog(
                 vacationStartDate = editingPeriod?.startDate ?: (if (editingVacationPeriodId == null) null else uiState.vacationStartDate),
                 vacationEndDate = editingPeriod?.endDate ?: (if (editingVacationPeriodId == null) null else uiState.vacationEndDate),
-                otherVacationDays = otherVacationDays,
+                otherVacationAllDays = otherVacationAllDays,
                 workDays = uiState.workDays,
                 holidays = uiState.holidays,
                 onDismissRequest = {
@@ -641,7 +639,7 @@ fun SettingsScreen(
 fun CompactVacationDateRangePickerDialog(
     vacationStartDate: LocalDate?,
     vacationEndDate: LocalDate?,
-    otherVacationDays: Set<LocalDate> = emptySet(),
+    otherVacationAllDays: Set<LocalDate> = emptySet(),
     workDays: Set<DayOfWeek> = emptySet(),
     holidays: List<Holiday> = emptyList(),
     onDismissRequest: () -> Unit,
@@ -805,7 +803,7 @@ fun CompactVacationDateRangePickerDialog(
                                             val dayNumber = row * 7 + col - (firstDayOfWeek - 2)
                                             if (dayNumber in 1..daysInMonth) {
                                                 val date = month.atDay(dayNumber)
-                                                val isInVacationRange = date in fullVacationRangeSet || date in otherVacationDays
+                                                val isInVacationRange = date in fullVacationRangeSet || date in otherVacationAllDays
                                                 val isWorkDay = WorkTimeCalculator.isWorkDay(date, workDays, holidays)
 
                                                 Box(
