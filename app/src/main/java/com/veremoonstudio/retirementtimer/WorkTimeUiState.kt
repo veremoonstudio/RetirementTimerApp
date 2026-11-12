@@ -52,6 +52,8 @@ data class SettingsData(
     val startTimeStr: String = "09:00",
     val endTimeStr: String = "18:00",
     val vacationHours: Int = 0,
+    val vacationStartEpoch: Long = -1L,
+    val vacationEndEpoch: Long = -1L,
     val holidays: List<SavedHoliday> = defaultSavedHolidays,
     val selectedBackground: String = "None"
 )
@@ -91,7 +93,26 @@ data class WorkTimeUiState(
     val startTime: LocalTime = LocalTime.of(9, 0),
     val endTime: LocalTime = LocalTime.of(18, 0),
     val vacationHours: Int = 0,
+    val vacationStartDate: LocalDate? = null,
+    val vacationEndDate: LocalDate? = null,
     val holidays: List<Holiday> = defaultHolidays,
     val selectedBackground: String = "None",
     val timeLeft: TimeLeftData = TimeLeftData("00", "00", "00", "00")
 )
+
+val WorkTimeUiState.vacationDaysSet: Set<LocalDate>
+    get() {
+        val start = vacationStartDate ?: return emptySet()
+        val end = vacationEndDate ?: start
+        val first = if (start.isBefore(end)) start else end
+        val last = if (start.isBefore(end)) end else start
+        val days = mutableSetOf<LocalDate>()
+        var cursor = first
+        var count = 0
+        while (!cursor.isAfter(last) && count < 365) {
+            days.add(cursor)
+            cursor = cursor.plusDays(1)
+            count++
+        }
+        return days
+    }

@@ -23,8 +23,8 @@
     <string name="working_hours_title">WORKING HOURS</string>
     <string name="start_time">Start Time</string>
     <string name="end_time">End Time</string>
-    <string name="vacation_title">VACATION</string>
-    <string name="vacation_hours">Vacation Hours</string>
+    <string name="vacation_title">VACATION DAYS</string>
+    <string name="vacation_days">Vacation Days</string>
     <string name="holidays_title">HOLIDAYS</string>
     <string name="add_new_holiday">Add New Holiday</string>
     <string name="holiday_name">Holiday Name</string>

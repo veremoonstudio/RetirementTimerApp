@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,6 +60,7 @@ fun SettingsScreen(
     val focusManager = LocalFocusManager.current
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
+    var showVacationDatePicker by remember { mutableStateOf(false) }
 
     val isPremiumUnlocked by viewModel.billingManager.isPremiumUnlocked.collectAsState()
     val isPremium = BuildConfig.IS_PREMIUM || isPremiumUnlocked
@@ -157,7 +159,7 @@ fun SettingsScreen(
                     )
                 }
 
-                // Vacation Hours
+                // Vacation Days Section
                 item {
                     SettingsSectionTitle(stringResource(R.string.vacation_title))
                     Row(
@@ -171,7 +173,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = stringResource(R.string.vacation_hours),
+                            text = stringResource(R.string.vacation_days),
                             style = TextStyle(
                                 fontFamily = PlayfairDisplay,
                                 fontSize = 18.sp,
@@ -179,65 +181,41 @@ fun SettingsScreen(
                                 color = RetirementColors.Cream
                             )
                         )
-                        var isFocused by remember { mutableStateOf(false) }
-                        var textValue by remember { mutableStateOf(uiState.vacationHours.toString()) }
 
-                        LaunchedEffect(uiState.vacationHours) {
-                            if (!isFocused) {
-                                textValue = uiState.vacationHours.toString()
-                            }
-                        }
+                        val vacDaysCount = uiState.vacationDaysSet.size
 
                         Box(
                             modifier = Modifier
-                                .width(80.dp)
+                                .width(85.dp)
                                 .height(38.dp)
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(Color.White.copy(alpha = 0.03f))
                                 .border(1.dp, RetirementColors.Gold.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                .clickable { showVacationDatePicker = true }
                                 .padding(horizontal = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            BasicTextField(
-                                value = textValue,
-                                onValueChange = { newValue ->
-                                    val cleanInput = newValue.filter { char -> char.isDigit() }
-                                    textValue = cleanInput
-                                    val hours = cleanInput.toIntOrNull() ?: 0
-                                    viewModel.updateVacationHours(hours)
-                                },
-                                textStyle = TextStyle(
-                                    fontFamily = PlayfairDisplay,
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = RetirementColors.Gold,
-                                    textAlign = TextAlign.Center
-                                ),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Number,
-                                    imeAction = ImeAction.Done
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onDone = {
-                                        if (textValue.isEmpty()) {
-                                            textValue = "0"
-                                        }
-                                        focusManager.clearFocus()
-                                    }
-                                ),
-                                cursorBrush = SolidColor(RetirementColors.Gold),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .onFocusChanged { focusState ->
-                                        isFocused = focusState.isFocused
-                                        if (!focusState.isFocused) {
-                                            if (textValue.isEmpty()) {
-                                                textValue = "0"
-                                            }
-                                        }
-                                    }
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.CalendarMonth,
+                                    contentDescription = "Vacation Calendar",
+                                    tint = RetirementColors.Gold,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = if (vacDaysCount > 0) "$vacDaysCount d" else "0",
+                                    style = TextStyle(
+                                        fontFamily = PlayfairDisplay,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = RetirementColors.Gold,
+                                        textAlign = TextAlign.Center
+                                    )
+                                )
+                            }
                         }
                     }
                 }
@@ -429,6 +407,62 @@ fun SettingsScreen(
                 initialHour = uiState.endTime.hour,
                 initialMinute = uiState.endTime.minute
             )
+        }
+
+        if (showVacationDatePicker) {
+            val initialStartMillis = uiState.vacationStartDate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+            val initialEndMillis = uiState.vacationEndDate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+            val dateRangePickerState = rememberDateRangePickerState(
+                initialSelectedStartDateMillis = initialStartMillis,
+                initialSelectedEndDateMillis = initialEndMillis
+            )
+
+            DatePickerDialog(
+                onDismissRequest = { showVacationDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val startMillis = dateRangePickerState.selectedStartDateMillis
+                        val endMillis = dateRangePickerState.selectedEndDateMillis
+                        val start = startMillis?.let { LocalDate.ofEpochDay(Math.floorDiv(it, 86400000L)) }
+                        val end = endMillis?.let { LocalDate.ofEpochDay(Math.floorDiv(it, 86400000L)) }
+                        viewModel.updateVacationRange(start, end)
+                        showVacationDatePicker = false
+                    }) {
+                        Text(stringResource(R.string.ok), color = RetirementColors.Gold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        viewModel.updateVacationRange(null, null)
+                        showVacationDatePicker = false
+                    }) {
+                        Text("Clear", color = RetirementColors.Cream)
+                    }
+                }
+            ) {
+                DateRangePicker(
+                    state = dateRangePickerState,
+                    colors = DatePickerDefaults.colors(
+                        containerColor = RetirementColors.Background,
+                        titleContentColor = RetirementColors.Gold,
+                        headlineContentColor = RetirementColors.Gold,
+                        weekdayContentColor = RetirementColors.Gold,
+                        subheadContentColor = RetirementColors.Gold,
+                        yearContentColor = RetirementColors.Cream,
+                        currentYearContentColor = RetirementColors.Gold,
+                        selectedYearContentColor = Color(0xFF111315),
+                        selectedYearContainerColor = RetirementColors.Gold,
+                        dayContentColor = RetirementColors.Cream,
+                        disabledDayContentColor = RetirementColors.Cream.copy(alpha = 0.3f),
+                        selectedDayContainerColor = RetirementColors.Gold,
+                        selectedDayContentColor = Color(0xFF111315),
+                        todayContentColor = RetirementColors.Gold,
+                        todayDateBorderColor = RetirementColors.Gold,
+                        dayInSelectionRangeContainerColor = Color(0xFF10B981).copy(alpha = 0.25f),
+                        dayInSelectionRangeContentColor = Color.White
+                    )
+                )
+            }
         }
     }
 }

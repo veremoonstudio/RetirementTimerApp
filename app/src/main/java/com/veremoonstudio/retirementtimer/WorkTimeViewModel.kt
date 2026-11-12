@@ -42,6 +42,8 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
                         try {
                             val data = jsonParser.decodeFromString<SettingsData>(json)
                             val targetDate = if (data.retirementDateEpoch != -1L) LocalDate.ofEpochDay(data.retirementDateEpoch) else LocalDate.now().plusYears(5)
+                            val startVac = if (data.vacationStartEpoch != -1L) LocalDate.ofEpochDay(data.vacationStartEpoch) else null
+                            val endVac = if (data.vacationEndEpoch != -1L) LocalDate.ofEpochDay(data.vacationEndEpoch) else null
                             val holidaysList = if (!json.contains("\"holidays\"") || data.holidays.size <= 2) {
                                 defaultHolidays
                             } else {
@@ -55,6 +57,8 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
                                     startTime = try { LocalTime.parse(data.startTimeStr) } catch (_: Exception) { LocalTime.of(9, 0) },
                                     endTime = try { LocalTime.parse(data.endTimeStr) } catch (_: Exception) { LocalTime.of(18, 0) },
                                     vacationHours = data.vacationHours,
+                                    vacationStartDate = startVac,
+                                    vacationEndDate = endVac,
                                     holidays = holidaysList,
                                     selectedBackground = data.selectedBackground
                                 )
@@ -92,6 +96,42 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         saveAllSettings()
     }
 
+    fun updateVacationRange(start: LocalDate?, end: LocalDate?) {
+        val hoursPerWorkDay = try {
+            val startT = _uiState.value.startTime
+            val endT = _uiState.value.endTime
+            val diff = Duration.between(startT, endT).toHours()
+            if (diff > 0) diff.toInt() else 9
+        } catch (_: Exception) { 9 }
+
+        val calculatedHours = if (start == null) {
+            0
+        } else {
+            val first = if (end != null && start.isAfter(end)) end else start
+            val last = if (end != null && start.isAfter(end)) start else (end ?: start)
+            var workDaysCount = 0
+            var cursor = first
+            var count = 0
+            while (!cursor.isAfter(last) && count < 365) {
+                if (WorkTimeCalculator.isWorkDay(cursor, _uiState.value.workDays, _uiState.value.holidays)) {
+                    workDaysCount++
+                }
+                cursor = cursor.plusDays(1)
+                count++
+            }
+            workDaysCount * hoursPerWorkDay
+        }
+
+        _uiState.update {
+            it.copy(
+                vacationStartDate = start,
+                vacationEndDate = end,
+                vacationHours = calculatedHours
+            )
+        }
+        saveAllSettings()
+    }
+
     fun updateHolidays(holidays: List<Holiday>) {
         _uiState.update { it.copy(holidays = holidays) }
         saveAllSettings()
@@ -111,6 +151,8 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
             startTimeStr = state.startTime.toString(),
             endTimeStr = state.endTime.toString(),
             vacationHours = state.vacationHours,
+            vacationStartEpoch = state.vacationStartDate?.toEpochDay() ?: -1L,
+            vacationEndEpoch = state.vacationEndDate?.toEpochDay() ?: -1L,
             holidays = state.holidays.map { h -> SavedHoliday(h.name, h.month, h.day, h.isEnabled) },
             selectedBackground = state.selectedBackground
         )
