@@ -2,11 +2,10 @@ package com.veremoonstudio.retirementtimer
 
 import kotlinx.serialization.Serializable
 import java.time.DayOfWeek
-import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.util.Locale
+import java.util.UUID
 
 val defaultSavedHolidays = listOf(
     SavedHoliday("New Year's Day", 1, 1, true),
@@ -39,6 +38,19 @@ val defaultHolidays = listOf(
 )
 
 @Serializable
+data class SavedVacationPeriod(
+    val id: String = UUID.randomUUID().toString(),
+    val startEpoch: Long,
+    val endEpoch: Long
+)
+
+data class VacationPeriod(
+    val id: String = UUID.randomUUID().toString(),
+    val startDate: LocalDate,
+    val endDate: LocalDate
+)
+
+@Serializable
 data class SettingsData(
     val isWorkTimeMode: Boolean = true,
     val retirementDateEpoch: Long = -1L,
@@ -54,6 +66,7 @@ data class SettingsData(
     val vacationHours: Int = 0,
     val vacationStartEpoch: Long = -1L,
     val vacationEndEpoch: Long = -1L,
+    val vacationPeriods: List<SavedVacationPeriod> = emptyList(),
     val holidays: List<SavedHoliday> = defaultSavedHolidays,
     val selectedBackground: String = "None"
 )
@@ -95,6 +108,7 @@ data class WorkTimeUiState(
     val vacationHours: Int = 0,
     val vacationStartDate: LocalDate? = null,
     val vacationEndDate: LocalDate? = null,
+    val vacationPeriods: List<VacationPeriod> = emptyList(),
     val holidays: List<Holiday> = defaultHolidays,
     val selectedBackground: String = "None",
     val timeLeft: TimeLeftData = TimeLeftData("00", "00", "00", "00")
@@ -102,19 +116,36 @@ data class WorkTimeUiState(
 
 val WorkTimeUiState.vacationDaysSet: Set<LocalDate>
     get() {
-        val start = vacationStartDate ?: return emptySet()
-        val end = vacationEndDate ?: start
-        val first = if (start.isBefore(end)) start else end
-        val last = if (start.isBefore(end)) end else start
         val days = mutableSetOf<LocalDate>()
-        var cursor = first
-        var count = 0
-        while (!cursor.isAfter(last) && count < 365) {
-            if (WorkTimeCalculator.isWorkDay(cursor, workDays, holidays)) {
-                days.add(cursor)
+        for (period in vacationPeriods) {
+            val start = period.startDate
+            val end = period.endDate
+            val first = if (start.isBefore(end)) start else end
+            val last = if (start.isBefore(end)) end else start
+            var cursor = first
+            var count = 0
+            while (!cursor.isAfter(last) && count < 365) {
+                if (WorkTimeCalculator.isWorkDay(cursor, workDays, holidays)) {
+                    days.add(cursor)
+                }
+                cursor = cursor.plusDays(1)
+                count++
             }
-            cursor = cursor.plusDays(1)
-            count++
+        }
+        if (days.isEmpty() && vacationStartDate != null) {
+            val start = vacationStartDate
+            val end = vacationEndDate ?: start
+            val first = if (start.isBefore(end)) start else end
+            val last = if (start.isBefore(end)) end else start
+            var cursor = first
+            var count = 0
+            while (!cursor.isAfter(last) && count < 365) {
+                if (WorkTimeCalculator.isWorkDay(cursor, workDays, holidays)) {
+                    days.add(cursor)
+                }
+                cursor = cursor.plusDays(1)
+                count++
+            }
         }
         return days
     }

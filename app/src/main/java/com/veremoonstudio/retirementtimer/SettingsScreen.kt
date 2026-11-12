@@ -18,7 +18,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +31,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.focus.onFocusChanged
@@ -68,6 +71,7 @@ fun SettingsScreen(
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
     var showVacationDatePicker by remember { mutableStateOf(false) }
+    var editingVacationPeriodId by remember { mutableStateOf<String?>(null) }
 
     val isPremiumUnlocked by viewModel.billingManager.isPremiumUnlocked.collectAsState()
     val isPremium = BuildConfig.IS_PREMIUM || isPremiumUnlocked
@@ -168,72 +172,218 @@ fun SettingsScreen(
 
                 // Vacation Days Section
                 item {
-                    SettingsSectionTitle(stringResource(R.string.vacation_title))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.White.copy(alpha = 0.05f))
-                            .border(1.dp, RetirementColors.Gold.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val vacStart = uiState.vacationStartDate
-                        val vacEnd = uiState.vacationEndDate
-                        val fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy")
-                        val vacationLabel = when {
-                            vacStart != null && vacEnd != null -> {
-                                val s = if (vacStart.isBefore(vacEnd)) vacStart else vacEnd
-                                val e = if (vacStart.isBefore(vacEnd)) vacEnd else vacStart
-                                "Vacation ${s.format(fmt)} - ${e.format(fmt)}"
-                            }
-                            vacStart != null -> "Vacation ${vacStart.format(fmt)}"
-                            else -> stringResource(R.string.vacation_days)
-                        }
-
                         Text(
-                            text = vacationLabel,
+                            text = stringResource(R.string.vacation_title),
                             style = TextStyle(
                                 fontFamily = PlayfairDisplay,
-                                fontSize = if (vacStart != null) 14.sp else 18.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = RetirementColors.Cream
-                            ),
-                            modifier = Modifier.weight(1f, fill = false)
+                                fontSize = 16.sp,
+                                letterSpacing = 2.sp,
+                                color = RetirementColors.Gold
+                            )
                         )
 
-                        val vacDaysCount = uiState.vacationDaysSet.size
+                        val totalVacDays = uiState.vacationDaysSet.size
+                        if (totalVacDays > 0) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarMonth,
+                                    contentDescription = null,
+                                    tint = RetirementColors.Gold,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    text = "total: $totalVacDays d",
+                                    style = TextStyle(
+                                        fontFamily = PlayfairDisplay,
+                                        fontSize = 14.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = RetirementColors.Gold
+                                    )
+                                )
+                            }
+                        }
+                    }
 
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        val fmtDate = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+                        val fmtMonthStr = DateTimeFormatter.ofPattern("MMM", Locale.US)
+
+                        uiState.vacationPeriods.forEach { period ->
+                            val firstDate = if (period.startDate.isBefore(period.endDate)) period.startDate else period.endDate
+                            val lastDate = if (period.startDate.isBefore(period.endDate)) period.endDate else period.startDate
+
+                            var periodWorkDays = 0
+                            var cursor = firstDate
+                            var count = 0
+                            while (!cursor.isAfter(lastDate) && count < 365) {
+                                if (WorkTimeCalculator.isWorkDay(cursor, uiState.workDays, uiState.holidays)) {
+                                    periodWorkDays++
+                                }
+                                cursor = cursor.plusDays(1)
+                                count++
+                            }
+
+                            val startM = firstDate.format(fmtMonthStr).uppercase(Locale.US)
+                            val endM = lastDate.format(fmtMonthStr).uppercase(Locale.US)
+                            val monthBadgeText = if (startM == endM) startM else "$startM-$endM"
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.White.copy(alpha = 0.05f))
+                                    .border(1.dp, RetirementColors.Gold.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier.weight(1f, fill = false)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "VACATION",
+                                            style = TextStyle(
+                                                fontFamily = PlayfairDisplay,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = RetirementColors.Gold,
+                                                letterSpacing = 1.sp
+                                            )
+                                        )
+
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(5.dp))
+                                                .background(Color(0xFF10B981).copy(alpha = 0.22f))
+                                                .border(1.dp, Color(0xFF10B981), RoundedCornerShape(5.dp))
+                                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = monthBadgeText,
+                                                style = TextStyle(
+                                                    fontFamily = FontFamily.SansSerif,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF34D399),
+                                                    letterSpacing = 0.5.sp
+                                                )
+                                            )
+                                        }
+                                    }
+
+                                    Text(
+                                        text = "${firstDate.format(fmtDate)} – ${lastDate.format(fmtDate)}",
+                                        style = TextStyle(
+                                            fontFamily = CormorantGaramond,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = RetirementColors.Cream
+                                        )
+                                    )
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(78.dp)
+                                            .height(36.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(Color.White.copy(alpha = 0.03f))
+                                            .border(1.dp, RetirementColors.Gold.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                            .clickable {
+                                                editingVacationPeriodId = period.id
+                                                showVacationDatePicker = true
+                                            }
+                                            .padding(horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.CalendarMonth,
+                                                contentDescription = "Edit Vacation",
+                                                tint = RetirementColors.Gold,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Text(
+                                                text = "$periodWorkDays d",
+                                                style = TextStyle(
+                                                    fontFamily = PlayfairDisplay,
+                                                    fontSize = 16.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = RetirementColors.Gold
+                                                )
+                                            )
+                                        }
+                                    }
+
+                                    IconButton(
+                                        onClick = { viewModel.deleteVacationPeriod(period.id) },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Delete,
+                                            contentDescription = "Delete Vacation",
+                                            tint = RetirementColors.Cream.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Variant 3 Gold Pill Button for Adding New Vacation Period
                         Box(
                             modifier = Modifier
-                                .width(85.dp)
-                                .height(38.dp)
-                                .clip(RoundedCornerShape(6.dp))
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .clip(RoundedCornerShape(24.dp))
                                 .background(Color.White.copy(alpha = 0.03f))
-                                .border(1.dp, RetirementColors.Gold.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                                .clickable { showVacationDatePicker = true }
-                                .padding(horizontal = 6.dp),
+                                .border(1.dp, RetirementColors.Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                                .clickable {
+                                    editingVacationPeriodId = null
+                                    showVacationDatePicker = true
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.CalendarMonth,
-                                    contentDescription = "Vacation Calendar",
+                                    imageVector = Icons.Filled.Add,
+                                    contentDescription = "Add Vacation Period",
                                     tint = RetirementColors.Gold,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                                 Text(
-                                    text = if (vacDaysCount > 0) "$vacDaysCount d" else "0",
+                                    text = "Add Vacation Period",
                                     style = TextStyle(
                                         fontFamily = PlayfairDisplay,
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = RetirementColors.Gold,
-                                        textAlign = TextAlign.Center
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = RetirementColors.Gold
                                     )
                                 )
                             }
@@ -256,27 +406,37 @@ fun SettingsScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Button(
-                            onClick = { showAddHolidayDialog = true },
+                        // Variant 3 Gold Pill Button for Adding New Holiday
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.White.copy(alpha = 0.1f),
-                                contentColor = RetirementColors.Gold
-                            ),
-                            shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, RetirementColors.Gold.copy(alpha = 0.5f))
+                                .height(48.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color.White.copy(alpha = 0.03f))
+                                .border(1.dp, RetirementColors.Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                                .clickable { showAddHolidayDialog = true },
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = stringResource(R.string.add_new_holiday),
-                                style = TextStyle(
-                                    fontFamily = PlayfairDisplay,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = RetirementColors.Gold
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Add,
+                                    contentDescription = stringResource(R.string.add_new_holiday),
+                                    tint = RetirementColors.Gold,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                            )
+                                Text(
+                                    text = stringResource(R.string.add_new_holiday),
+                                    style = TextStyle(
+                                        fontFamily = PlayfairDisplay,
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = RetirementColors.Gold
+                                    )
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(2.dp))
@@ -431,14 +591,46 @@ fun SettingsScreen(
         }
 
         if (showVacationDatePicker) {
+            val editingPeriod = uiState.vacationPeriods.find { it.id == editingVacationPeriodId }
+            val otherVacationDays = remember(uiState.vacationPeriods, editingVacationPeriodId, uiState.workDays, uiState.holidays) {
+                val set = mutableSetOf<LocalDate>()
+                uiState.vacationPeriods.filter { it.id != editingVacationPeriodId }.forEach { p ->
+                    val first = if (p.startDate.isBefore(p.endDate)) p.startDate else p.endDate
+                    val last = if (p.startDate.isBefore(p.endDate)) p.endDate else p.startDate
+                    var cursor = first
+                    var count = 0
+                    while (!cursor.isAfter(last) && count < 365) {
+                        if (WorkTimeCalculator.isWorkDay(cursor, uiState.workDays, uiState.holidays)) {
+                            set.add(cursor)
+                        }
+                        cursor = cursor.plusDays(1)
+                        count++
+                    }
+                }
+                set
+            }
+
             CompactVacationDateRangePickerDialog(
-                vacationStartDate = uiState.vacationStartDate,
-                vacationEndDate = uiState.vacationEndDate,
+                vacationStartDate = editingPeriod?.startDate ?: (if (editingVacationPeriodId == null) null else uiState.vacationStartDate),
+                vacationEndDate = editingPeriod?.endDate ?: (if (editingVacationPeriodId == null) null else uiState.vacationEndDate),
+                otherVacationDays = otherVacationDays,
                 workDays = uiState.workDays,
                 holidays = uiState.holidays,
-                onDismissRequest = { showVacationDatePicker = false },
+                onDismissRequest = {
+                    showVacationDatePicker = false
+                    editingVacationPeriodId = null
+                },
                 onRangeSelected = { start, end ->
-                    viewModel.updateVacationRange(start, end)
+                    if (start != null && end != null) {
+                        val targetId = editingVacationPeriodId
+                        if (targetId == null) {
+                            viewModel.addVacationPeriod(start, end)
+                        } else {
+                            viewModel.updateVacationPeriod(targetId, start, end)
+                        }
+                    }
+                    showVacationDatePicker = false
+                    editingVacationPeriodId = null
                 }
             )
         }
@@ -449,6 +641,7 @@ fun SettingsScreen(
 fun CompactVacationDateRangePickerDialog(
     vacationStartDate: LocalDate?,
     vacationEndDate: LocalDate?,
+    otherVacationDays: Set<LocalDate> = emptySet(),
     workDays: Set<DayOfWeek> = emptySet(),
     holidays: List<Holiday> = emptyList(),
     onDismissRequest: () -> Unit,
@@ -478,7 +671,7 @@ fun CompactVacationDateRangePickerDialog(
         }
     }
 
-    val inRangeDays = remember(tempStart, tempEnd, workDays, holidays) {
+    val fullVacationRangeSet = remember(tempStart, tempEnd) {
         val s = tempStart
         val e = tempEnd
         if (s == null) emptySet()
@@ -489,9 +682,7 @@ fun CompactVacationDateRangePickerDialog(
             var cursor = first
             var count = 0
             while (!cursor.isAfter(last) && count < 365) {
-                if (WorkTimeCalculator.isWorkDay(cursor, workDays, holidays)) {
-                    set.add(cursor)
-                }
+                set.add(cursor)
                 cursor = cursor.plusDays(1)
                 count++
             }
@@ -614,19 +805,21 @@ fun CompactVacationDateRangePickerDialog(
                                             val dayNumber = row * 7 + col - (firstDayOfWeek - 2)
                                             if (dayNumber in 1..daysInMonth) {
                                                 val date = month.atDay(dayNumber)
-                                                val isInRange = date in inRangeDays
+                                                val isInVacationRange = date in fullVacationRangeSet || date in otherVacationDays
+                                                val isWorkDay = WorkTimeCalculator.isWorkDay(date, workDays, holidays)
 
                                                 Box(
                                                     modifier = Modifier
                                                         .size(36.dp)
                                                         .clip(CircleShape)
                                                         .then(
-                                                            if (isInRange) {
-                                                                Modifier
+                                                            when {
+                                                                isInVacationRange && isWorkDay -> Modifier
                                                                     .background(Color(0xFF10B981).copy(alpha = 0.25f))
                                                                     .border(1.dp, Color(0xFF10B981), CircleShape)
-                                                            } else {
-                                                                Modifier
+                                                                isInVacationRange && !isWorkDay -> Modifier
+                                                                    .border(1.dp, Color.White.copy(alpha = 0.45f), CircleShape)
+                                                                else -> Modifier
                                                             }
                                                         )
                                                         .clickable {
@@ -650,7 +843,7 @@ fun CompactVacationDateRangePickerDialog(
                                                         text = dayNumber.toString(),
                                                         style = TextStyle(
                                                             fontFamily = FontFamily.SansSerif,
-                                                            fontWeight = if (isInRange) FontWeight.Bold else FontWeight.Normal,
+                                                            fontWeight = if (isInVacationRange) FontWeight.Bold else FontWeight.Normal,
                                                             fontSize = 15.sp,
                                                             color = Color.White
                                                         )
