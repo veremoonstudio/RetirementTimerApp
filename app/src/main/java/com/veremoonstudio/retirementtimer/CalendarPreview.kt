@@ -2,8 +2,6 @@ package com.veremoonstudio.retirementtimer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -12,31 +10,37 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.veremoonstudio.retirementtimer.ui.theme.*
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @Composable
 fun CalendarPreviewScreen() {
-    val sampleDate = LocalDate.of(2026, 11, 18)
+    val sampleRetirementDate = LocalDate.of(2026, 11, 12)
+    val sampleVacationDays = setOf(
+        LocalDate.of(2026, 11, 15),
+        LocalDate.of(2026, 11, 16),
+        LocalDate.of(2026, 11, 17),
+        LocalDate.of(2026, 11, 18),
+        LocalDate.of(2026, 11, 19),
+        LocalDate.of(2026, 11, 20)
+    )
     val scrollState = rememberScrollState()
 
     Column(
@@ -48,417 +52,349 @@ fun CalendarPreviewScreen() {
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Text(
-            text = "CALENDAR DESIGN VARIANTS",
+            text = "ДНИ ОТПУСКА В ТЕКУЩЕМ КАЛЕНДАРЕ",
             style = TextStyle(
                 fontFamily = PlayfairDisplay,
                 fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
+                fontSize = 20.sp,
                 color = RetirementColors.Gold,
                 letterSpacing = 2.sp
-            ),
-            modifier = Modifier.padding(bottom = 8.dp)
+            )
         )
 
-        // Variant 1
-        CalendarCardWrapper(
-            title = "Variant 1: Classic Luxury Gold Circle (Current)",
-            subtitle = "Circle selector, Playfair headers & Garamond numbers"
-        ) {
-            CalendarVariant1(selectedDate = sampleDate)
-        }
+        Text(
+            text = "Твой текущий календарь Material DatePicker с зелёной окантовкой для дней отпуска:",
+            style = TextStyle(
+                fontFamily = CormorantGaramond,
+                fontSize = 15.sp,
+                color = RetirementColors.Cream.copy(alpha = 0.85f)
+            )
+        )
 
-        // Variant 2
-        CalendarCardWrapper(
-            title = "Variant 2: Modern Soft Rounded Card",
-            subtitle = "Rounded square selector, clean sans-serif headers"
-        ) {
-            CalendarVariant2(selectedDate = sampleDate)
-        }
+        // Option 1
+        Text(
+            text = "Вариант 1: Изумрудно-зелёная окантовка (1.5 dp)",
+            style = TextStyle(fontFamily = PlayfairDisplay, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = RetirementColors.Gold)
+        )
+        MaterialDatePickerDialogCustom(
+            selectedDate = sampleRetirementDate,
+            vacationDays = sampleVacationDays,
+            greenBorderColor = Color(0xFF10B981),
+            borderWidth = 1.5.dp,
+            hasTint = false
+        )
 
-        // Variant 3
-        CalendarCardWrapper(
-            title = "Variant 3: Editorial Gold Ring & Dot",
-            subtitle = "Garamond Italic headers, gold ring selector with cream text"
-        ) {
-            CalendarVariant3(selectedDate = sampleDate)
-        }
+        // Option 2
+        Text(
+            text = "Вариант 2: Чёткое мятно-зелёное кольцо (2 dp)",
+            style = TextStyle(fontFamily = PlayfairDisplay, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = RetirementColors.Gold)
+        )
+        MaterialDatePickerDialogCustom(
+            selectedDate = sampleRetirementDate,
+            vacationDays = sampleVacationDays,
+            greenBorderColor = Color(0xFF34D399),
+            borderWidth = 2.dp,
+            hasTint = false
+        )
 
-        // Variant 4
-        CalendarCardWrapper(
-            title = "Variant 4: Royal Pill Accent & Header Badge",
-            subtitle = "Pill shape selector, badge header for month title"
-        ) {
-            CalendarVariant4(selectedDate = sampleDate)
-        }
-
-        // Variant 5
-        CalendarCardWrapper(
-            title = "Variant 5: Roman Emperor (Cinzel Classical Serif)",
-            subtitle = "Cinzel serif font, classical Roman architecture aesthetic"
-        ) {
-            CalendarVariant5(selectedDate = sampleDate)
-        }
+        // Option 3
+        Text(
+            text = "Вариант 3: Зелёная окантовка + лёгкий полупрозрачный зеленый фон",
+            style = TextStyle(fontFamily = PlayfairDisplay, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = RetirementColors.Gold)
+        )
+        MaterialDatePickerDialogCustom(
+            selectedDate = sampleRetirementDate,
+            vacationDays = sampleVacationDays,
+            greenBorderColor = Color(0xFF10B981),
+            borderWidth = 1.5.dp,
+            hasTint = true
+        )
     }
 }
 
+// -------------------------------------------------------------
+// EXACT MATERIAL 3 DATE PICKER DIALOG LAYOUT (MATCHING SCREENSHOT)
+// -------------------------------------------------------------
 @Composable
-fun CalendarCardWrapper(
-    title: String,
-    subtitle: String,
-    content: @Composable () -> Unit
+fun MaterialDatePickerDialogCustom(
+    selectedDate: LocalDate,
+    vacationDays: Set<LocalDate>,
+    greenBorderColor: Color,
+    borderWidth: Dp,
+    hasTint: Boolean = false
 ) {
+    val month = YearMonth.of(2026, 11)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, RetirementColors.Gold.copy(alpha = 0.3f), RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor = RetirementColors.Background)
+            .clip(RoundedCornerShape(28.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF212121))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Header Top Label
             Text(
-                text = title,
-                style = TextStyle(
-                    fontFamily = PlayfairDisplay,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
-                    color = RetirementColors.Gold
-                )
-            )
-            Text(
-                text = subtitle,
+                text = "Выберите дату",
                 style = TextStyle(
                     fontFamily = CormorantGaramond,
-                    fontSize = 13.sp,
-                    color = RetirementColors.Cream.copy(alpha = 0.7f)
+                    fontSize = 14.sp,
+                    color = Color(0xFFD4B26F),
+                    fontWeight = FontWeight.Medium
                 )
             )
-            HorizontalDivider(color = RetirementColors.Gold.copy(alpha = 0.2f), thickness = 1.dp)
-            content()
-        }
-    }
-}
 
-// -------------------------------------------------------------
-// VARIANT 1: Classic Luxury Gold Circle
-// -------------------------------------------------------------
-@Composable
-fun CalendarVariant1(selectedDate: LocalDate) {
-    val month = YearMonth.of(2026, 11)
-    val today = LocalDate.of(2026, 11, 10)
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = RetirementColors.Gold)
-            Text(
-                text = "November 2026",
-                style = TextStyle(fontFamily = PlayfairDisplay, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, color = RetirementColors.Gold)
-            )
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = RetirementColors.Gold)
-        }
-
-        // Days Header
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su").forEach { day ->
-                Text(text = day, style = TextStyle(fontFamily = PlayfairDisplay, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = RetirementColors.Gold), modifier = Modifier.width(38.dp), textAlign = TextAlign.Center)
-            }
-        }
-
-        // Days Grid
-        CalendarGridHelper(
-            yearMonth = month,
-            selectedDate = selectedDate,
-            today = today,
-            dayShape = CircleShape,
-            selectedContainer = RetirementColors.Gold,
-            selectedContent = Color(0xFF111315),
-            fontFamily = CormorantGaramond
-        )
-    }
-}
-
-// -------------------------------------------------------------
-// VARIANT 2: Modern Soft Rounded Card
-// -------------------------------------------------------------
-@Composable
-fun CalendarVariant2(selectedDate: LocalDate) {
-    val month = YearMonth.of(2026, 11)
-    val today = LocalDate.of(2026, 11, 10)
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = RetirementColors.Cream)
-            Text(
-                text = "November 2026",
-                style = TextStyle(fontFamily = PlayfairDisplay, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = RetirementColors.Cream)
-            )
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = RetirementColors.Cream)
-        }
-
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            listOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN").forEach { day ->
-                Text(text = day, style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = RetirementColors.Gold), modifier = Modifier.width(38.dp), textAlign = TextAlign.Center)
-            }
-        }
-
-        CalendarGridHelper(
-            yearMonth = month,
-            selectedDate = selectedDate,
-            today = today,
-            dayShape = RoundedCornerShape(10.dp),
-            selectedContainer = RetirementColors.Gold,
-            selectedContent = Color(0xFF111315),
-            fontFamily = PlayfairDisplay
-        )
-    }
-}
-
-// -------------------------------------------------------------
-// VARIANT 3: Editorial Gold Ring & Dot
-// -------------------------------------------------------------
-@Composable
-fun CalendarVariant3(selectedDate: LocalDate) {
-    val month = YearMonth.of(2026, 11)
-    val today = LocalDate.of(2026, 11, 10)
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("<", style = TextStyle(fontFamily = PlayfairDisplay, fontSize = 20.sp, color = RetirementColors.Gold))
-            Text(
-                text = "November 2026",
-                style = TextStyle(fontFamily = CormorantGaramond, fontWeight = FontWeight.Medium, fontStyle = FontStyle.Italic, fontSize = 22.sp, color = RetirementColors.Cream)
-            )
-            Text(">", style = TextStyle(fontFamily = PlayfairDisplay, fontSize = 20.sp, color = RetirementColors.Gold))
-        }
-
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
-                Text(text = day, style = TextStyle(fontFamily = CormorantGaramond, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = RetirementColors.Gold), modifier = Modifier.width(38.dp), textAlign = TextAlign.Center)
-            }
-        }
-
-        CalendarGridHelper(
-            yearMonth = month,
-            selectedDate = selectedDate,
-            today = today,
-            dayShape = CircleShape,
-            selectedContainer = RetirementColors.Gold.copy(alpha = 0.25f),
-            selectedContent = RetirementColors.Gold,
-            isRingStyle = true,
-            fontFamily = CormorantGaramond
-        )
-    }
-}
-
-// -------------------------------------------------------------
-// VARIANT 4: Royal Pill Accent & Header Badge
-// -------------------------------------------------------------
-@Composable
-fun CalendarVariant4(selectedDate: LocalDate) {
-    val month = YearMonth.of(2026, 11)
-    val today = LocalDate.of(2026, 11, 10)
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = RetirementColors.Gold)
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(RetirementColors.Gold.copy(alpha = 0.15f))
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            // Headline Date & Edit Icon
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "NOVEMBER 2026",
-                    style = TextStyle(fontFamily = PlayfairDisplay, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = RetirementColors.Gold, letterSpacing = 1.sp)
+                    text = "12 нояб. 2026 г.",
+                    style = TextStyle(
+                        fontFamily = CormorantGaramond,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 32.sp,
+                        color = Color(0xFFE5C78B)
+                    )
+                )
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = null,
+                    tint = Color(0xFFD4B26F),
+                    modifier = Modifier.size(20.dp)
                 )
             }
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = RetirementColors.Gold)
-        }
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su").forEach { day ->
-                Text(text = day, style = TextStyle(fontFamily = PlayfairDisplay, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = RetirementColors.Gold), modifier = Modifier.width(38.dp), textAlign = TextAlign.Center)
+            HorizontalDivider(color = Color.White.copy(alpha = 0.1f), thickness = 1.dp)
+
+            // Month Selector Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Ноябрь 2026 г.",
+                        style = TextStyle(
+                            fontFamily = CormorantGaramond,
+                            fontSize = 15.sp,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.9f)
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
-        }
 
-        CalendarGridHelper(
-            yearMonth = month,
-            selectedDate = selectedDate,
-            today = today,
-            dayShape = RoundedCornerShape(16.dp),
-            selectedContainer = RetirementColors.Gold,
-            selectedContent = Color(0xFF111315),
-            fontFamily = CormorantGaramond
-        )
-    }
-}
-
-// -------------------------------------------------------------
-// VARIANT 5: Roman Emperor (Cinzel Classical Serif)
-// -------------------------------------------------------------
-@Composable
-fun CalendarVariant5(selectedDate: LocalDate) {
-    val month = YearMonth.of(2026, 11)
-    val today = LocalDate.of(2026, 11, 10)
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = RetirementColors.Gold)
-            Text(
-                text = "NOVEMBER 2026",
-                style = TextStyle(fontFamily = CinzelFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = RetirementColors.Gold, letterSpacing = 2.sp)
-            )
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = RetirementColors.Gold)
-        }
-
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
-                Text(text = day, style = TextStyle(fontFamily = CinzelFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = RetirementColors.Gold), modifier = Modifier.width(38.dp), textAlign = TextAlign.Center)
+            // Days of week header (П В С Ч П С В)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                listOf("П", "В", "С", "Ч", "П", "С", "В").forEach { day ->
+                    Text(
+                        text = day,
+                        style = TextStyle(
+                            fontFamily = CormorantGaramond,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = Color(0xFFD4B26F)
+                        ),
+                        modifier = Modifier.width(36.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
-        }
 
-        CalendarGridHelper(
-            yearMonth = month,
-            selectedDate = selectedDate,
-            today = today,
-            dayShape = RoundedCornerShape(8.dp),
-            selectedContainer = RetirementColors.Gold,
-            selectedContent = Color(0xFF111315),
-            fontFamily = CinzelFontFamily
-        )
-    }
-}
+            // Days Grid
+            val firstDayOfWeek = month.atDay(1).dayOfWeek.value // Monday = 1
+            val daysInMonth = month.lengthOfMonth()
+            val totalCells = (firstDayOfWeek - 1) + daysInMonth
+            val rows = (totalCells + 6) / 7
 
-// Helper for rendering preview grids
-@Composable
-fun CalendarGridHelper(
-    yearMonth: YearMonth,
-    selectedDate: LocalDate,
-    today: LocalDate,
-    dayShape: Shape,
-    selectedContainer: Color,
-    selectedContent: Color,
-    isRingStyle: Boolean = false,
-    fontFamily: FontFamily
-) {
-    val firstDayOfWeek = yearMonth.atDay(1).dayOfWeek.value
-    val daysInMonth = yearMonth.lengthOfMonth()
-    val totalCells = (firstDayOfWeek - 1) + daysInMonth
-    val rows = (totalCells + 6) / 7
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                for (row in 0 until rows) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        for (col in 0 until 7) {
+                            val dayNumber = row * 7 + col - (firstDayOfWeek - 2)
+                            if (dayNumber in 1..daysInMonth) {
+                                val date = month.atDay(dayNumber)
+                                val isSelected = date == selectedDate
+                                val isVacation = date in vacationDays
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (row in 0 until rows) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                for (col in 0 until 7) {
-                    val dayNumber = row * 7 + col - (firstDayOfWeek - 2)
-                    if (dayNumber in 1..daysInMonth) {
-                        val date = yearMonth.atDay(dayNumber)
-                        val isSelected = date == selectedDate
-                        val isToday = date == today
-
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(dayShape)
-                                .then(
-                                    when {
-                                        isSelected && !isRingStyle -> Modifier.background(selectedContainer)
-                                        isSelected && isRingStyle -> Modifier.border(2.dp, RetirementColors.Gold, dayShape).background(selectedContainer)
-                                        isToday -> Modifier.border(1.5.dp, RetirementColors.Gold, dayShape)
-                                        else -> Modifier
-                                    }
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = dayNumber.toString(),
-                                style = TextStyle(
-                                    fontFamily = fontFamily,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    fontSize = 17.sp,
-                                    color = if (isSelected) selectedContent else RetirementColors.Cream
-                                )
-                            )
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .then(
+                                            when {
+                                                isSelected -> Modifier.background(Color(0xFFD4B26F))
+                                                isVacation -> {
+                                                    if (hasTint) {
+                                                        Modifier
+                                                            .background(greenBorderColor.copy(alpha = 0.18f))
+                                                            .border(borderWidth, greenBorderColor, CircleShape)
+                                                    } else {
+                                                        Modifier.border(borderWidth, greenBorderColor, CircleShape)
+                                                    }
+                                                }
+                                                else -> Modifier
+                                            }
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = dayNumber.toString(),
+                                        style = TextStyle(
+                                            fontFamily = CormorantGaramond,
+                                            fontWeight = if (isSelected || isVacation) FontWeight.Bold else FontWeight.Normal,
+                                            fontSize = 16.sp,
+                                            color = when {
+                                                isSelected -> Color(0xFF111315)
+                                                isVacation -> if (hasTint) greenBorderColor else Color.White
+                                                else -> Color.White
+                                            }
+                                        )
+                                    )
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.size(36.dp))
+                            }
                         }
-                    } else {
-                        Spacer(modifier = Modifier.size(38.dp))
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Footer Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Cancel",
+                    style = TextStyle(
+                        fontFamily = CormorantGaramond,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 15.sp,
+                        color = Color.White.copy(alpha = 0.8f)
+                    ),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+                Text(
+                    text = "OK",
+                    style = TextStyle(
+                        fontFamily = CormorantGaramond,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = Color(0xFFD4B26F)
+                    ),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
         }
     }
 }
 
-@Preview(showBackground = true, widthDp = 380, name = "Variant 1 - Classic Luxury Gold Circle")
+// -------------------------------------------------------------
+// PREVIEWS FOR IDE
+// -------------------------------------------------------------
+
+@Preview(showBackground = true, widthDp = 380, name = "Option 1 - Emerald Green Border 1.5dp")
 @Composable
-fun PreviewVariant1() {
+fun PreviewMaterialDatePickerOption1() {
     RetirementTimerAppTheme {
-        CalendarCardWrapper("Variant 1: Classic Luxury Gold Circle (Current)", "Circle selector, Playfair headers & Garamond numbers") {
-            CalendarVariant1(selectedDate = LocalDate.of(2026, 11, 18))
+        Box(modifier = Modifier.background(Color(0xFF111315)).padding(12.dp)) {
+            MaterialDatePickerDialogCustom(
+                selectedDate = LocalDate.of(2026, 11, 12),
+                vacationDays = setOf(
+                    LocalDate.of(2026, 11, 15),
+                    LocalDate.of(2026, 11, 16),
+                    LocalDate.of(2026, 11, 17),
+                    LocalDate.of(2026, 11, 18),
+                    LocalDate.of(2026, 11, 19),
+                    LocalDate.of(2026, 11, 20)
+                ),
+                greenBorderColor = Color(0xFF10B981),
+                borderWidth = 1.5.dp,
+                hasTint = false
+            )
         }
     }
 }
 
-@Preview(showBackground = true, widthDp = 380, name = "Variant 2 - Modern Soft Rounded Card")
+@Preview(showBackground = true, widthDp = 380, name = "Option 2 - Bright Mint Ring 2dp")
 @Composable
-fun PreviewVariant2() {
+fun PreviewMaterialDatePickerOption2() {
     RetirementTimerAppTheme {
-        CalendarCardWrapper("Variant 2: Modern Soft Rounded Card", "Rounded square selector, clean sans-serif headers") {
-            CalendarVariant2(selectedDate = LocalDate.of(2026, 11, 18))
+        Box(modifier = Modifier.background(Color(0xFF111315)).padding(12.dp)) {
+            MaterialDatePickerDialogCustom(
+                selectedDate = LocalDate.of(2026, 11, 12),
+                vacationDays = setOf(
+                    LocalDate.of(2026, 11, 15),
+                    LocalDate.of(2026, 11, 16),
+                    LocalDate.of(2026, 11, 17),
+                    LocalDate.of(2026, 11, 18),
+                    LocalDate.of(2026, 11, 19),
+                    LocalDate.of(2026, 11, 20)
+                ),
+                greenBorderColor = Color(0xFF34D399),
+                borderWidth = 2.dp,
+                hasTint = false
+            )
         }
     }
 }
 
-@Preview(showBackground = true, widthDp = 380, name = "Variant 3 - Editorial Gold Ring & Dot")
+@Preview(showBackground = true, widthDp = 380, name = "Option 3 - Green Border + Subtle Green Tint")
 @Composable
-fun PreviewVariant3() {
+fun PreviewMaterialDatePickerOption3() {
     RetirementTimerAppTheme {
-        CalendarCardWrapper("Variant 3: Editorial Gold Ring & Dot", "Garamond Italic headers, gold ring selector with cream text") {
-            CalendarVariant3(selectedDate = LocalDate.of(2026, 11, 18))
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 380, name = "Variant 4 - Royal Pill Accent")
-@Composable
-fun PreviewVariant4() {
-    RetirementTimerAppTheme {
-        CalendarCardWrapper("Variant 4: Royal Pill Accent & Header Badge", "Pill shape selector, badge header for month title") {
-            CalendarVariant4(selectedDate = LocalDate.of(2026, 11, 18))
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 380, name = "Variant 5 - Roman Emperor Cinzel Serif")
-@Composable
-fun PreviewVariant5() {
-    RetirementTimerAppTheme {
-        CalendarCardWrapper("Variant 5: Roman Emperor (Cinzel Classical Serif)", "Cinzel serif font, classical Roman architecture aesthetic") {
-            CalendarVariant5(selectedDate = LocalDate.of(2026, 11, 18))
+        Box(modifier = Modifier.background(Color(0xFF111315)).padding(12.dp)) {
+            MaterialDatePickerDialogCustom(
+                selectedDate = LocalDate.of(2026, 11, 12),
+                vacationDays = setOf(
+                    LocalDate.of(2026, 11, 15),
+                    LocalDate.of(2026, 11, 16),
+                    LocalDate.of(2026, 11, 17),
+                    LocalDate.of(2026, 11, 18),
+                    LocalDate.of(2026, 11, 19),
+                    LocalDate.of(2026, 11, 20)
+                ),
+                greenBorderColor = Color(0xFF10B981),
+                borderWidth = 1.5.dp,
+                hasTint = true
+            )
         }
     }
 }
