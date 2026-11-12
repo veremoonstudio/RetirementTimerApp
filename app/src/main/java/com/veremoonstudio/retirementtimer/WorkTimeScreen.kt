@@ -278,15 +278,25 @@ fun WorkTimeScreenContent(
             val datePickerState = rememberDatePickerState(
                 initialSelectedDateMillis = initialMillis
             )
+            var userClickedDay by remember { mutableStateOf(false) }
+
+            LaunchedEffect(datePickerState.selectedDateMillis) {
+                if (datePickerState.selectedDateMillis != null && datePickerState.selectedDateMillis != initialMillis) {
+                    userClickedDay = true
+                }
+            }
 
             DatePickerDialog(
                 onDismissRequest = { showDatePicker = false },
                 confirmButton = {
                     TextButton(onClick = {
                         val millis = datePickerState.selectedDateMillis ?: initialMillis
-                        pendingDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
+                        val selectedDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
                         showDatePicker = false
-                        showTimePicker = true
+                        if (userClickedDay) {
+                            pendingDate = selectedDate
+                            showTimePicker = true
+                        }
                     }) {
                         Text(stringResource(R.string.ok), color = RetirementColors.Gold)
                     }
@@ -319,9 +329,11 @@ fun WorkTimeScreenContent(
                                     PointerEventType.Release -> {
                                         val position = event.changes.firstOrNull()?.position
                                         if (!isSwipe && position != null && position.y >= size.height * 0.35f) {
+                                            userClickedDay = true
                                             val millis = datePickerState.selectedDateMillis ?: initialMillis
-                                            pendingDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
+                                            val selectedDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
                                             showDatePicker = false
+                                            pendingDate = selectedDate
                                             showTimePicker = true
                                         }
                                         isSwipe = false
