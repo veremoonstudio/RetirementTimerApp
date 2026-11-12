@@ -33,6 +33,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -345,6 +346,33 @@ fun WorkTimeScreenContent(
                 ) {
                     DatePicker(
                         state = datePickerState,
+                        title = {
+                            Text(
+                                text = stringResource(R.string.select_date),
+                                style = TextStyle(
+                                    fontFamily = PlayfairDisplay,
+                                    fontSize = 14.sp,
+                                    color = RetirementColors.Gold,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                modifier = Modifier.padding(start = 24.dp, top = 16.dp)
+                            )
+                        },
+                        headline = {
+                            val millis = datePickerState.selectedDateMillis ?: initialMillis
+                            val selectedDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
+                            Text(
+                                text = selectedDate.format(DateTimeFormatter.ofPattern("d MMM yyyy 'г.'", Locale.forLanguageTag("ru"))),
+                                style = TextStyle(
+                                    fontFamily = PlayfairDisplay,
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = RetirementColors.Gold
+                                ),
+                                modifier = Modifier.padding(start = 24.dp, bottom = 12.dp)
+                            )
+                        },
+                        showModeToggle = false,
                         colors = DatePickerDefaults.colors(
                             containerColor = RetirementColors.Background,
                             titleContentColor = RetirementColors.Gold,

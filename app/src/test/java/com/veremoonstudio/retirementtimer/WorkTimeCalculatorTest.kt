@@ -161,6 +161,32 @@ class WorkTimeCalculatorTest {
     }
 
     @Test
+    fun testCalculateWorkTime_vacationDatesSubtraction() {
+        val now = LocalDateTime.of(2026, 3, 2, 9, 0, 0)
+        val retirementDate = LocalDate.of(2026, 3, 9) // 6 work days total (Mar 2, 3, 4, 5, 6, 9)
+
+        // Select vacation from Tue Mar 3 to Wed Mar 4 (2 work days)
+        val state = WorkTimeUiState(
+            isWorkTimeMode = true,
+            retirementDate = retirementDate,
+            workDays = defaultWorkDays,
+            startTime = LocalTime.of(9, 0),
+            endTime = LocalTime.of(18, 0),
+            vacationStartDate = LocalDate.of(2026, 3, 3),
+            vacationEndDate = LocalDate.of(2026, 3, 4),
+            holidays = emptyList()
+        )
+
+        val result = WorkTimeCalculator.calculateWorkTime(now, retirementDate, state)
+
+        // 6 work days - 2 vacation days = 4 work days
+        assertEquals("04", result.days)
+        assertEquals("00", result.hours)
+        assertEquals("00", result.minutes)
+        assertEquals("00", result.seconds)
+    }
+
+    @Test
     fun testCalculateWorkTime_pastRetirementDate() {
         // Retirement date was 2026-03-02 at 18:00
         val retirementDate = LocalDate.of(2026, 3, 2)

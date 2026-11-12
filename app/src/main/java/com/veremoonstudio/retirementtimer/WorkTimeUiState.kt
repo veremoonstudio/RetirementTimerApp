@@ -110,7 +110,9 @@ val WorkTimeUiState.vacationDaysSet: Set<LocalDate>
         var cursor = first
         var count = 0
         while (!cursor.isAfter(last) && count < 365) {
-            days.add(cursor)
+            if (WorkTimeCalculator.isWorkDay(cursor, workDays, holidays)) {
+                days.add(cursor)
+            }
             cursor = cursor.plusDays(1)
             count++
         }

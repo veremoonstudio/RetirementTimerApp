@@ -9,8 +9,14 @@ import java.util.Locale
 
 object WorkTimeCalculator {
 
-    fun isWorkDay(date: LocalDate, workDays: Set<DayOfWeek>, holidays: List<Holiday>): Boolean {
+    fun isWorkDay(
+        date: LocalDate,
+        workDays: Set<DayOfWeek>,
+        holidays: List<Holiday>,
+        vacationDays: Set<LocalDate> = emptySet()
+    ): Boolean {
         if (date.dayOfWeek !in workDays) return false
+        if (date in vacationDays) return false
         return holidays.none { it.isEnabled && it.month == date.monthValue && it.day == date.dayOfMonth }
     }
 
@@ -54,6 +60,7 @@ object WorkTimeCalculator {
 
         val targetDateTime = retirementDate.atTime(endTime)
         val today = now.toLocalDate()
+        val vacationSet = state.vacationDaysSet
 
         if (now.isAfter(targetDateTime)) {
             var pastWorkDays = 0L
@@ -61,13 +68,13 @@ object WorkTimeCalculator {
             val maxCursor = today.minusDays(1)
             var iterations = 0
             while (!cursor.isAfter(maxCursor) && iterations < 36500) {
-                if (isWorkDay(cursor, state.workDays, state.holidays)) pastWorkDays++
+                if (isWorkDay(cursor, state.workDays, state.holidays, vacationSet)) pastWorkDays++
                 cursor = cursor.plusDays(1)
                 iterations++
             }
 
             var todaySeconds = 0L
-            if (today.isAfter(retirementDate) && isWorkDay(today, state.workDays, state.holidays)) {
+            if (today.isAfter(retirementDate) && isWorkDay(today, state.workDays, state.holidays, vacationSet)) {
                 val nowTime = now.toLocalTime()
                 if (nowTime.isAfter(startTime)) {
                     val effectiveEnd = if (nowTime.isAfter(endTime) && endTime > startTime) endTime else nowTime
@@ -100,13 +107,13 @@ object WorkTimeCalculator {
         var cursor = today.plusDays(1)
         var iterations = 0
         while (!cursor.isAfter(retirementDate) && iterations < 36500) {
-            if (isWorkDay(cursor, state.workDays, state.holidays)) futureWorkDays++
+            if (isWorkDay(cursor, state.workDays, state.holidays, vacationSet)) futureWorkDays++
             cursor = cursor.plusDays(1)
             iterations++
         }
 
         var todaySeconds = 0L
-        if (isWorkDay(today, state.workDays, state.holidays)) {
+        if (isWorkDay(today, state.workDays, state.holidays, vacationSet)) {
             val nowTime = now.toLocalTime()
             if (nowTime.isBefore(endTime)) {
                 val effectiveStart = if (nowTime.isBefore(startTime)) startTime else nowTime
@@ -115,7 +122,9 @@ object WorkTimeCalculator {
         }
 
         var totalWorkSeconds = (futureWorkDays * workSecondsPerDay) + todaySeconds
-        totalWorkSeconds -= (state.vacationHours * 3600L)
+        if (vacationSet.isEmpty() && state.vacationHours > 0) {
+            totalWorkSeconds -= (state.vacationHours * 3600L)
+        }
         if (totalWorkSeconds < 0) totalWorkSeconds = 0
 
         val days = totalWorkSeconds / workSecondsPerDay

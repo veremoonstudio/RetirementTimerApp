@@ -9,6 +9,9 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -34,6 +37,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -41,14 +45,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.unit.Velocity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.veremoonstudio.retirementtimer.ui.theme.*
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -172,14 +179,28 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
+                        val vacStart = uiState.vacationStartDate
+                        val vacEnd = uiState.vacationEndDate
+                        val fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+                        val vacationLabel = when {
+                            vacStart != null && vacEnd != null -> {
+                                val s = if (vacStart.isBefore(vacEnd)) vacStart else vacEnd
+                                val e = if (vacStart.isBefore(vacEnd)) vacEnd else vacStart
+                                "Vacation ${s.format(fmt)} - ${e.format(fmt)}"
+                            }
+                            vacStart != null -> "Vacation ${vacStart.format(fmt)}"
+                            else -> stringResource(R.string.vacation_days)
+                        }
+
                         Text(
-                            text = stringResource(R.string.vacation_days),
+                            text = vacationLabel,
                             style = TextStyle(
                                 fontFamily = PlayfairDisplay,
-                                fontSize = 18.sp,
+                                fontSize = if (vacStart != null) 14.sp else 18.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = RetirementColors.Cream
-                            )
+                            ),
+                            modifier = Modifier.weight(1f, fill = false)
                         )
 
                         val vacDaysCount = uiState.vacationDaysSet.size
@@ -410,58 +431,303 @@ fun SettingsScreen(
         }
 
         if (showVacationDatePicker) {
-            val initialStartMillis = uiState.vacationStartDate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
-            val initialEndMillis = uiState.vacationEndDate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
-            val dateRangePickerState = rememberDateRangePickerState(
-                initialSelectedStartDateMillis = initialStartMillis,
-                initialSelectedEndDateMillis = initialEndMillis
-            )
-
-            DatePickerDialog(
+            CompactVacationDateRangePickerDialog(
+                vacationStartDate = uiState.vacationStartDate,
+                vacationEndDate = uiState.vacationEndDate,
+                workDays = uiState.workDays,
+                holidays = uiState.holidays,
                 onDismissRequest = { showVacationDatePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        val startMillis = dateRangePickerState.selectedStartDateMillis
-                        val endMillis = dateRangePickerState.selectedEndDateMillis
-                        val start = startMillis?.let { LocalDate.ofEpochDay(Math.floorDiv(it, 86400000L)) }
-                        val end = endMillis?.let { LocalDate.ofEpochDay(Math.floorDiv(it, 86400000L)) }
-                        viewModel.updateVacationRange(start, end)
-                        showVacationDatePicker = false
-                    }) {
-                        Text(stringResource(R.string.ok), color = RetirementColors.Gold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = {
-                        viewModel.updateVacationRange(null, null)
-                        showVacationDatePicker = false
-                    }) {
-                        Text("Clear", color = RetirementColors.Cream)
-                    }
+                onRangeSelected = { start, end ->
+                    viewModel.updateVacationRange(start, end)
                 }
+            )
+        }
+    }
+}
+
+@Composable
+fun CompactVacationDateRangePickerDialog(
+    vacationStartDate: LocalDate?,
+    vacationEndDate: LocalDate?,
+    workDays: Set<DayOfWeek> = emptySet(),
+    holidays: List<Holiday> = emptyList(),
+    onDismissRequest: () -> Unit,
+    onRangeSelected: (LocalDate?, LocalDate?) -> Unit
+) {
+    var tempStart by remember { mutableStateOf(vacationStartDate) }
+    var tempEnd by remember { mutableStateOf(vacationEndDate) }
+
+    val localeRu = remember { Locale.forLanguageTag("ru") }
+    val headlineText = remember(tempStart, tempEnd) {
+        when {
+            tempStart == null -> "Нажмите дату начала"
+            tempEnd == null -> {
+                "${tempStart?.format(DateTimeFormatter.ofPattern("d MMM yyyy", localeRu))} - ..."
+            }
+            else -> {
+                val s = tempStart!!
+                val e = tempEnd!!
+                val first = if (s.isBefore(e)) s else e
+                val last = if (s.isBefore(e)) e else s
+                if (first.year == last.year) {
+                    "${first.format(DateTimeFormatter.ofPattern("d MMM", localeRu))} - ${last.format(DateTimeFormatter.ofPattern("d MMM yyyy 'г.'", localeRu))}"
+                } else {
+                    "${first.format(DateTimeFormatter.ofPattern("d MMM yyyy", localeRu))} - ${last.format(DateTimeFormatter.ofPattern("d MMM yyyy 'г.'", localeRu))}"
+                }
+            }
+        }
+    }
+
+    val inRangeDays = remember(tempStart, tempEnd, workDays, holidays) {
+        val s = tempStart
+        val e = tempEnd
+        if (s == null) emptySet()
+        else {
+            val first = if (e != null && s.isAfter(e)) e else s
+            val last = if (e != null && s.isAfter(e)) s else (e ?: s)
+            val set = mutableSetOf<LocalDate>()
+            var cursor = first
+            var count = 0
+            while (!cursor.isAfter(last) && count < 365) {
+                if (WorkTimeCalculator.isWorkDay(cursor, workDays, holidays)) {
+                    set.add(cursor)
+                }
+                cursor = cursor.plusDays(1)
+                count++
+            }
+            set
+        }
+    }
+
+    Dialog(onDismissRequest = onDismissRequest) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(540.dp)
+                .clip(RoundedCornerShape(28.dp)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF212121))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
             ) {
-                DateRangePicker(
-                    state = dateRangePickerState,
-                    colors = DatePickerDefaults.colors(
-                        containerColor = RetirementColors.Background,
-                        titleContentColor = RetirementColors.Gold,
-                        headlineContentColor = RetirementColors.Gold,
-                        weekdayContentColor = RetirementColors.Gold,
-                        subheadContentColor = RetirementColors.Gold,
-                        yearContentColor = RetirementColors.Cream,
-                        currentYearContentColor = RetirementColors.Gold,
-                        selectedYearContentColor = Color(0xFF111315),
-                        selectedYearContainerColor = RetirementColors.Gold,
-                        dayContentColor = RetirementColors.Cream,
-                        disabledDayContentColor = RetirementColors.Cream.copy(alpha = 0.3f),
-                        selectedDayContainerColor = RetirementColors.Gold,
-                        selectedDayContentColor = Color(0xFF111315),
-                        todayContentColor = RetirementColors.Gold,
-                        todayDateBorderColor = RetirementColors.Gold,
-                        dayInSelectionRangeContainerColor = Color(0xFF10B981).copy(alpha = 0.25f),
-                        dayInSelectionRangeContentColor = Color.White
+                // Title
+                Text(
+                    text = "Выберите даты отпуска",
+                    style = TextStyle(
+                        fontFamily = PlayfairDisplay,
+                        fontSize = 14.sp,
+                        color = RetirementColors.Gold,
+                        fontWeight = FontWeight.Medium
                     )
                 )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Headline
+                Text(
+                    text = headlineText,
+                    style = TextStyle(
+                        fontFamily = PlayfairDisplay,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = RetirementColors.Gold
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = Color.White.copy(alpha = 0.1f), thickness = 1.dp)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Days of week header (П В С Ч П С В)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    listOf("П", "В", "С", "Ч", "П", "С", "В").forEach { day ->
+                        Text(
+                            text = day,
+                            style = TextStyle(
+                                fontFamily = PlayfairDisplay,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = RetirementColors.Gold
+                            ),
+                            modifier = Modifier.width(36.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                val focusMonth = remember(vacationStartDate) {
+                    vacationStartDate?.let { YearMonth.from(it) } ?: YearMonth.now()
+                }
+                val baseMonth = remember(focusMonth) {
+                    val now = YearMonth.now().minusMonths(1)
+                    if (focusMonth.isBefore(now)) focusMonth else now
+                }
+                val monthList = remember(baseMonth) {
+                    (0..36).map { baseMonth.plusMonths(it.toLong()) }
+                }
+                val focusIndex = remember(monthList, focusMonth) {
+                    monthList.indexOf(focusMonth).coerceAtLeast(0)
+                }
+                val listState = rememberLazyListState(initialFirstVisibleItemIndex = focusIndex)
+
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(monthList) { month ->
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            // Month Header - COMPACT SPACING
+                            Text(
+                                text = month.format(DateTimeFormatter.ofPattern("LLLL yyyy 'г.'", localeRu)).replaceFirstChar { it.uppercase() },
+                                style = TextStyle(
+                                    fontFamily = FontFamily.SansSerif,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = RetirementColors.Gold
+                                ),
+                                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                            )
+
+                            // Days Grid
+                            val firstDayOfWeek = month.atDay(1).dayOfWeek.value
+                            val daysInMonth = month.lengthOfMonth()
+                            val totalCells = (firstDayOfWeek - 1) + daysInMonth
+                            val rows = (totalCells + 6) / 7
+
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                for (row in 0 until rows) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        for (col in 0 until 7) {
+                                            val dayNumber = row * 7 + col - (firstDayOfWeek - 2)
+                                            if (dayNumber in 1..daysInMonth) {
+                                                val date = month.atDay(dayNumber)
+                                                val isInRange = date in inRangeDays
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(36.dp)
+                                                        .clip(CircleShape)
+                                                        .then(
+                                                            if (isInRange) {
+                                                                Modifier
+                                                                    .background(Color(0xFF10B981).copy(alpha = 0.25f))
+                                                                    .border(1.dp, Color(0xFF10B981), CircleShape)
+                                                            } else {
+                                                                Modifier
+                                                            }
+                                                        )
+                                                        .clickable {
+                                                            val s = tempStart
+                                                            val e = tempEnd
+                                                            if (s == null || e != null) {
+                                                                tempStart = date
+                                                                tempEnd = null
+                                                            } else {
+                                                                if (date >= s) {
+                                                                    tempEnd = date
+                                                                } else {
+                                                                    tempStart = date
+                                                                    tempEnd = null
+                                                                }
+                                                            }
+                                                        },
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(
+                                                        text = dayNumber.toString(),
+                                                        style = TextStyle(
+                                                            fontFamily = FontFamily.SansSerif,
+                                                            fontWeight = if (isInRange) FontWeight.Bold else FontWeight.Normal,
+                                                            fontSize = 15.sp,
+                                                            color = Color.White
+                                                        )
+                                                    )
+                                                }
+                                            } else {
+                                                Spacer(modifier = Modifier.size(36.dp))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Footer Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = {
+                            tempStart = null
+                            tempEnd = null
+                        }
+                    ) {
+                        Text(
+                            text = "Clear",
+                            style = TextStyle(
+                                fontFamily = PlayfairDisplay,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 15.sp,
+                                color = RetirementColors.Cream.copy(alpha = 0.8f)
+                            )
+                        )
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = onDismissRequest) {
+                            Text(
+                                text = stringResource(R.string.cancel),
+                                style = TextStyle(
+                                    fontFamily = PlayfairDisplay,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 15.sp,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                val s = tempStart
+                                val e = tempEnd
+                                if (s != null && e != null && s.isAfter(e)) {
+                                    onRangeSelected(e, s)
+                                } else {
+                                    onRangeSelected(s, e)
+                                }
+                                onDismissRequest()
+                            }
+                        ) {
+                            Text(
+                                text = stringResource(R.string.ok),
+                                style = TextStyle(
+                                    fontFamily = PlayfairDisplay,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = RetirementColors.Gold
+                                )
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -757,14 +1023,14 @@ fun EditHolidayDialog(
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            initialSelectedDateMillis = selectedDate.toEpochDay() * 86400000L
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        selectedDate = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
+                        selectedDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
                     }
                     showDatePicker = false
                 }) {
