@@ -96,12 +96,12 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
 
     fun updateWorkDays(days: Set<DayOfWeek>) {
         _uiState.update { it.copy(workDays = days) }
-        saveAllSettings()
+        recalculateVacationHoursAndSave()
     }
 
     fun updateTimes(start: LocalTime, end: LocalTime) {
         _uiState.update { it.copy(startTime = start, endTime = end) }
-        saveAllSettings()
+        recalculateVacationHoursAndSave()
     }
 
     fun updateVacationHours(hours: Int) {
@@ -159,7 +159,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
 
     fun updateHolidays(holidays: List<Holiday>) {
         _uiState.update { it.copy(holidays = holidays) }
-        saveAllSettings()
+        recalculateVacationHoursAndSave()
     }
 
     fun updateSelectedBackground(background: String) {
