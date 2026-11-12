@@ -129,7 +129,7 @@ fun BackgroundScreen(
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .clickable { onNavigateToPremium() }
-                            .padding(top = 16.dp, bottom = 110.dp)
+                            .padding(top = 16.dp, bottom = 140.dp)
                     )
                 } else {
                     Spacer(modifier = Modifier.height(24.dp))

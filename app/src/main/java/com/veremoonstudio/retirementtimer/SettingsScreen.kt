@@ -62,7 +62,7 @@ fun SettingsScreen(
 
     val isPremiumUnlocked by viewModel.billingManager.isPremiumUnlocked.collectAsState()
     val isPremium = BuildConfig.IS_PREMIUM || isPremiumUnlocked
-    val bottomPadding = if (!isPremium) 125.dp else 24.dp
+    val bottomPadding = if (!isPremium) 155.dp else 24.dp
 
     MarbleBackground(selectedBackground = uiState.selectedBackground) {
         Scaffold(
