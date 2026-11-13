@@ -254,7 +254,7 @@ fun SubtleGreenVacationCalendarPreviewScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFF2B2930))
-                        .padding(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 12.dp),
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {

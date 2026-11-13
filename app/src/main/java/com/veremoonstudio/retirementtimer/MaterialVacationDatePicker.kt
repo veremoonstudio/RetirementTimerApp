@@ -11,10 +11,12 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,6 +28,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,6 +57,8 @@ fun MaterialVacationDatePickerDialog(
     onConfirmDateOnly: (LocalDate) -> Unit = {}
 ) {
     var selectedDate by remember { mutableStateOf(initialDate) }
+    var isTextInputMode by remember { mutableStateOf(false) }
+    var textInputDate by remember(selectedDate) { mutableStateOf(selectedDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))) }
     val localeRu = remember { Locale.forLanguageTag("ru") }
 
     // Precalculate all vacation days (workdays vs non-workdays)
@@ -113,36 +119,91 @@ fun MaterialVacationDatePickerDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = selectedDate.format(DateTimeFormatter.ofPattern("d MMM yyyy 'г.'", localeRu)),
+                        text = if (isTextInputMode) "Введенная дата" else selectedDate.format(DateTimeFormatter.ofPattern("d MMM yyyy 'г.'", localeRu)),
                         style = TextStyle(
                             fontFamily = FontFamily.SansSerif,
-                            fontSize = 28.sp,
+                            fontSize = if (isTextInputMode) 26.sp else 28.sp,
                             fontWeight = FontWeight.Normal,
                             color = RetirementColors.Gold
                         )
                     )
 
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit Date",
-                        tint = RetirementColors.Gold,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    IconButton(
+                        onClick = { isTextInputMode = !isTextInputMode },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isTextInputMode) Icons.Default.DateRange else Icons.Default.Edit,
+                            contentDescription = if (isTextInputMode) "Calendar Mode" else "Text Input Mode",
+                            tint = RetirementColors.Gold,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 
             HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 1.dp)
 
-            // 2. Month Body Section (Same Background as Time Picker: RetirementColors.Background)
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(RetirementColors.Background)
-                    .padding(top = 16.dp, bottom = 12.dp)
-            ) {
+            if (isTextInputMode) {
+                // 2a. Text Input Mode Layout (Matching Screenshot 2)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(RetirementColors.Background)
+                        .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    OutlinedTextField(
+                        value = textInputDate,
+                        onValueChange = { input ->
+                            textInputDate = input
+                            val parts = input.trim().split(".", "/", "-")
+                            if (parts.size == 3) {
+                                val day = parts[0].toIntOrNull()
+                                val month = parts[1].toIntOrNull()
+                                val year = parts[2].toIntOrNull()
+                                if (day != null && month != null && year != null && year in 2000..2071) {
+                                    try {
+                                        selectedDate = LocalDate.of(year, month, day)
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        },
+                        label = { Text("Дата", color = RetirementColors.Gold) },
+                        placeholder = { Text("DD.MM.YYYY", color = Color.White.copy(alpha = 0.4f)) },
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            fontFamily = FontFamily.SansSerif,
+                            fontSize = 18.sp,
+                            color = Color.White
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = RetirementColors.Gold,
+                            unfocusedBorderColor = RetirementColors.Gold.copy(alpha = 0.6f),
+                            cursorColor = RetirementColors.Gold,
+                            focusedLabelColor = RetirementColors.Gold,
+                            unfocusedLabelColor = RetirementColors.Gold.copy(alpha = 0.8f)
+                        ),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            } else {
+                // 2b. Month Body Section (Graphical Calendar Grid)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(RetirementColors.Background)
+                        .padding(top = 16.dp, bottom = 12.dp)
+                ) {
                 val initialMonth = remember(initialDate) { YearMonth.from(initialDate) }
-                val baseMonth = remember { YearMonth.now().minusYears(5) }
-                val totalMonths = 240
+                val minYear = 2000
+                val maxYear = 2071
+                val baseMonth = remember { YearMonth.of(minYear, 1) }
+                val totalMonths = (maxYear - minYear + 1) * 12
                 val initialPageIndex = remember(initialMonth, baseMonth) {
                     val diffYears = initialMonth.year - baseMonth.year
                     val diffMonths = initialMonth.monthValue - baseMonth.monthValue
@@ -224,10 +285,8 @@ fun MaterialVacationDatePickerDialog(
                 if (isYearPickerVisible) {
                     // Year Selector Grid
                     val currentYear = currentDisplayedMonth.year
-                    val minYear = baseMonth.year
-                    val maxYear = baseMonth.year + 20
                     val yearsList = (minYear..maxYear).toList()
-                    val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = (currentYear - minYear - 2).coerceAtLeast(0))
+                    val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = (currentYear - minYear - 1).coerceAtLeast(0))
 
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(3),
@@ -375,13 +434,14 @@ fun MaterialVacationDatePickerDialog(
                     }
                 }
             }
+            }
 
             // Footer Action Buttons (Dedicated Panel with contrasting container background)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF2B2930))
-                    .padding(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 12.dp),
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -399,6 +459,19 @@ fun MaterialVacationDatePickerDialog(
                 Spacer(modifier = Modifier.width(16.dp))
                 TextButton(
                     onClick = {
+                        if (isTextInputMode) {
+                            val parts = textInputDate.trim().split(".", "/", "-")
+                            if (parts.size == 3) {
+                                val day = parts[0].toIntOrNull()
+                                val month = parts[1].toIntOrNull()
+                                val year = parts[2].toIntOrNull()
+                                if (day != null && month != null && year != null && year in 2000..2071) {
+                                    try {
+                                        selectedDate = LocalDate.of(year, month, day)
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        }
                         onConfirmDateOnly(selectedDate)
                         onDismissRequest()
                     }

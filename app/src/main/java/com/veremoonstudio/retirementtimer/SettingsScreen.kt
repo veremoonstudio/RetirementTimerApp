@@ -764,12 +764,12 @@ fun CompactVacationDateRangePickerDialog(
                 val focusMonth = remember(vacationStartDate) {
                     vacationStartDate?.let { YearMonth.from(it) } ?: YearMonth.now()
                 }
-                val baseMonth = remember(focusMonth) {
-                    val now = YearMonth.now().minusMonths(1)
-                    if (focusMonth.isBefore(now)) focusMonth else now
-                }
+                val minYear = 2000
+                val maxYear = 2071
+                val baseMonth = remember { YearMonth.of(minYear, 1) }
+                val totalMonths = (maxYear - minYear + 1) * 12
                 val monthList = remember(baseMonth) {
-                    (0..36).map { baseMonth.plusMonths(it.toLong()) }
+                    (0 until totalMonths).map { baseMonth.plusMonths(it.toLong()) }
                 }
                 val focusIndex = remember(monthList, focusMonth) {
                     monthList.indexOf(focusMonth).coerceAtLeast(0)
@@ -880,7 +880,7 @@ fun CompactVacationDateRangePickerDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFF2B2930))
-                        .padding(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 12.dp),
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {

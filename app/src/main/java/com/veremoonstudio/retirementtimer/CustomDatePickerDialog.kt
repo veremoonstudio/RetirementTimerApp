@@ -299,7 +299,7 @@ fun CustomMaterialDatePickerDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF2B2930))
-                    .padding(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 12.dp),
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
