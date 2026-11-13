@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.unit.Velocity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.veremoonstudio.retirementtimer.ui.theme.*
@@ -688,20 +689,29 @@ fun CompactVacationDateRangePickerDialog(
         }
     }
 
-    Dialog(onDismissRequest = onDismissRequest) {
+    val enabledHolidaySet = remember(holidays) {
+        holidays.filter { it.isEnabled }.map { Pair(it.month, it.day) }.toSet()
+    }
+
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(540.dp)
+                .fillMaxWidth(0.94f)
+                .height(550.dp)
                 .clip(RoundedCornerShape(28.dp)),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF212121))
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp)
-            ) {
-                // Title
+            Column(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(top = 20.dp, start = 20.dp, end = 20.dp)
+                ) {
+                    // Title
                 Text(
                     text = "Выберите даты отпуска",
                     style = TextStyle(
@@ -781,8 +791,8 @@ fun CompactVacationDateRangePickerDialog(
                                 style = TextStyle(
                                     fontFamily = FontFamily.SansSerif,
                                     fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = RetirementColors.Gold
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color.White.copy(alpha = 0.9f)
                                 ),
                                 modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
                             )
@@ -805,6 +815,8 @@ fun CompactVacationDateRangePickerDialog(
                                                 val date = month.atDay(dayNumber)
                                                 val isInVacationRange = date in fullVacationRangeSet || date in otherVacationAllDays
                                                 val isWorkDay = WorkTimeCalculator.isWorkDay(date, workDays, holidays)
+                                                val isHoliday = Pair(date.monthValue, date.dayOfMonth) in enabledHolidaySet
+                                                val isNonWorkDay = date.dayOfWeek !in workDays
 
                                                 Box(
                                                     modifier = Modifier
@@ -813,7 +825,7 @@ fun CompactVacationDateRangePickerDialog(
                                                         .then(
                                                             when {
                                                                 isInVacationRange && isWorkDay -> Modifier
-                                                                    .background(Color(0xFF10B981).copy(alpha = 0.25f))
+                                                                    .background(Color(0xFF10B981).copy(alpha = 0.06f))
                                                                     .border(1.dp, Color(0xFF10B981), CircleShape)
                                                                 isInVacationRange && !isWorkDay -> Modifier
                                                                     .border(1.dp, Color.White.copy(alpha = 0.45f), CircleShape)
@@ -841,9 +853,14 @@ fun CompactVacationDateRangePickerDialog(
                                                         text = dayNumber.toString(),
                                                         style = TextStyle(
                                                             fontFamily = FontFamily.SansSerif,
-                                                            fontWeight = if (isInVacationRange) FontWeight.Bold else FontWeight.Normal,
+                                                            fontWeight = FontWeight.Normal,
                                                             fontSize = 15.sp,
-                                                            color = Color.White
+                                                            color = when {
+                                                                isHoliday -> RetirementColors.Gold
+                                                                isInVacationRange && !isWorkDay -> Color.White.copy(alpha = 0.85f)
+                                                                isNonWorkDay -> Color.White.copy(alpha = 0.45f)
+                                                                else -> Color.White
+                                                            }
                                                         )
                                                     )
                                                 }
@@ -858,11 +875,12 @@ fun CompactVacationDateRangePickerDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Footer Buttons
+                // Footer Buttons (Dedicated bottom panel with contrasting container background)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF2B2930))
+                        .padding(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -878,12 +896,15 @@ fun CompactVacationDateRangePickerDialog(
                                 fontFamily = PlayfairDisplay,
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 15.sp,
-                                color = RetirementColors.Cream.copy(alpha = 0.8f)
+                                color = RetirementColors.Gold.copy(alpha = 0.8f)
                             )
                         )
                     }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         TextButton(onClick = onDismissRequest) {
                             Text(
                                 text = stringResource(R.string.cancel),
@@ -891,10 +912,11 @@ fun CompactVacationDateRangePickerDialog(
                                     fontFamily = PlayfairDisplay,
                                     fontWeight = FontWeight.Medium,
                                     fontSize = 15.sp,
-                                    color = Color.White.copy(alpha = 0.8f)
+                                    color = Color.White.copy(alpha = 0.9f)
                                 )
                             )
                         }
+                        Spacer(modifier = Modifier.width(12.dp))
                         TextButton(
                             onClick = {
                                 val s = tempStart
@@ -922,6 +944,7 @@ fun CompactVacationDateRangePickerDialog(
             }
         }
     }
+}
 }
 
 @Composable

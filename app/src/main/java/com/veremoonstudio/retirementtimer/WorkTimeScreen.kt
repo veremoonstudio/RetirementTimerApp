@@ -275,124 +275,22 @@ fun WorkTimeScreenContent(
         }
 
         if (showDatePicker) {
-            val initialMillis = remember { uiState.retirementDate.toEpochDay() * 86400000L }
-            val datePickerState = rememberDatePickerState(
-                initialSelectedDateMillis = initialMillis
-            )
-            var userClickedDay by remember { mutableStateOf(false) }
-
-            LaunchedEffect(datePickerState.selectedDateMillis) {
-                if (datePickerState.selectedDateMillis != null && datePickerState.selectedDateMillis != initialMillis) {
-                    userClickedDay = true
-                }
-            }
-
-            DatePickerDialog(
+            MaterialVacationDatePickerDialog(
+                initialDate = uiState.retirementDate,
+                vacationPeriods = uiState.vacationPeriods,
+                workDays = uiState.workDays,
+                holidays = uiState.holidays,
                 onDismissRequest = { showDatePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        val millis = datePickerState.selectedDateMillis ?: initialMillis
-                        val selectedDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
-                        showDatePicker = false
-                        if (userClickedDay) {
-                            pendingDate = selectedDate
-                            showTimePicker = true
-                        }
-                    }) {
-                        Text(stringResource(R.string.ok), color = RetirementColors.Gold)
-                    }
+                onDateSelected = { selectedDate ->
+                    showDatePicker = false
+                    pendingDate = selectedDate
+                    showTimePicker = true
                 },
-                dismissButton = {
-                    TextButton(onClick = { showDatePicker = false }) {
-                        Text(stringResource(R.string.cancel), color = RetirementColors.Cream)
-                    }
+                onConfirmDateOnly = { selectedDate ->
+                    showDatePicker = false
+                    onUpdateRetirementDate(selectedDate)
                 }
-            ) {
-                Box(
-                    modifier = Modifier.pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            var isSwipe = false
-                            while (true) {
-                                val event = awaitPointerEvent(PointerEventPass.Final)
-                                when (event.type) {
-                                    PointerEventType.Press -> {
-                                        isSwipe = false
-                                    }
-                                    PointerEventType.Move -> {
-                                        val change = event.changes.firstOrNull()
-                                        if (change != null) {
-                                            val dragDistance = (change.position - change.previousPosition).getDistance()
-                                            if (dragDistance > 8f) {
-                                                isSwipe = true
-                                            }
-                                        }
-                                    }
-                                    PointerEventType.Release -> {
-                                        val position = event.changes.firstOrNull()?.position
-                                        if (!isSwipe && position != null && position.y >= size.height * 0.35f) {
-                                            userClickedDay = true
-                                            val millis = datePickerState.selectedDateMillis ?: initialMillis
-                                            val selectedDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
-                                            showDatePicker = false
-                                            pendingDate = selectedDate
-                                            showTimePicker = true
-                                        }
-                                        isSwipe = false
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ) {
-                    DatePicker(
-                        state = datePickerState,
-                        title = {
-                            Text(
-                                text = stringResource(R.string.select_date),
-                                style = TextStyle(
-                                    fontFamily = PlayfairDisplay,
-                                    fontSize = 14.sp,
-                                    color = RetirementColors.Gold,
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                modifier = Modifier.padding(start = 24.dp, top = 16.dp)
-                            )
-                        },
-                        headline = {
-                            val millis = datePickerState.selectedDateMillis ?: initialMillis
-                            val selectedDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
-                            Text(
-                                text = selectedDate.format(DateTimeFormatter.ofPattern("d MMM yyyy 'г.'", Locale.forLanguageTag("ru"))),
-                                style = TextStyle(
-                                    fontFamily = PlayfairDisplay,
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = RetirementColors.Gold
-                                ),
-                                modifier = Modifier.padding(start = 24.dp, bottom = 12.dp)
-                            )
-                        },
-                        showModeToggle = false,
-                        colors = DatePickerDefaults.colors(
-                            containerColor = RetirementColors.Background,
-                            titleContentColor = RetirementColors.Gold,
-                            headlineContentColor = RetirementColors.Gold,
-                            weekdayContentColor = RetirementColors.Gold,
-                            subheadContentColor = RetirementColors.Gold,
-                            yearContentColor = RetirementColors.Cream,
-                            currentYearContentColor = RetirementColors.Gold,
-                            selectedYearContentColor = Color(0xFF111315),
-                            selectedYearContainerColor = RetirementColors.Gold,
-                            dayContentColor = RetirementColors.Cream,
-                            disabledDayContentColor = RetirementColors.Cream.copy(alpha = 0.3f),
-                            selectedDayContainerColor = RetirementColors.Gold,
-                            selectedDayContentColor = Color(0xFF111315),
-                            todayContentColor = RetirementColors.Gold,
-                            todayDateBorderColor = RetirementColors.Gold
-                        )
-                    )
-                }
-            }
+            )
         }
 
         if (showTimePicker) {

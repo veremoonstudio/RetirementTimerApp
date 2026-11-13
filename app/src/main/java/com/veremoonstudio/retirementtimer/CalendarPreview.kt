@@ -237,7 +237,7 @@ fun MaterialDatePickerDialogCustom(
             val totalCells = (firstDayOfWeek - 1) + daysInMonth
             val rows = (totalCells + 6) / 7
 
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 for (row in 0 until rows) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -258,13 +258,9 @@ fun MaterialDatePickerDialogCustom(
                                             when {
                                                 isSelected -> Modifier.background(Color(0xFFD4B26F))
                                                 isVacation -> {
-                                                    if (hasTint) {
-                                                        Modifier
-                                                            .background(greenBorderColor.copy(alpha = 0.18f))
-                                                            .border(borderWidth, greenBorderColor, CircleShape)
-                                                    } else {
-                                                        Modifier.border(borderWidth, greenBorderColor, CircleShape)
-                                                    }
+                                                    Modifier
+                                                        .background(greenBorderColor.copy(alpha = 0.06f))
+                                                        .border(borderWidth, greenBorderColor, CircleShape)
                                                 }
                                                 else -> Modifier
                                             }
@@ -275,7 +271,7 @@ fun MaterialDatePickerDialogCustom(
                                         text = dayNumber.toString(),
                                         style = TextStyle(
                                             fontFamily = CormorantGaramond,
-                                            fontWeight = if (isSelected || isVacation) FontWeight.Bold else FontWeight.Normal,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                             fontSize = 16.sp,
                                             color = when {
                                                 isSelected -> Color(0xFF111315)
@@ -293,11 +289,12 @@ fun MaterialDatePickerDialogCustom(
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Footer Action Buttons
+            // Footer Action Buttons (Dedicated bottom panel with contrasting container background)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF2B2930))
+                    .padding(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 12.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -307,10 +304,10 @@ fun MaterialDatePickerDialogCustom(
                         fontFamily = CormorantGaramond,
                         fontWeight = FontWeight.Medium,
                         fontSize = 15.sp,
-                        color = Color.White.copy(alpha = 0.8f)
-                    ),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
                 )
+                Spacer(modifier = Modifier.width(24.dp))
                 Text(
                     text = "OK",
                     style = TextStyle(
@@ -318,8 +315,7 @@ fun MaterialDatePickerDialogCustom(
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
                         color = Color(0xFFD4B26F)
-                    ),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
                 )
             }
         }

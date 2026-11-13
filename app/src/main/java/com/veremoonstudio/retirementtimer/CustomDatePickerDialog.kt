@@ -24,8 +24,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.veremoonstudio.retirementtimer.ui.theme.CormorantGaramond
 import com.veremoonstudio.retirementtimer.ui.theme.RetirementColors
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -36,6 +38,7 @@ fun CustomMaterialDatePickerDialog(
     initialDate: LocalDate = LocalDate.now(),
     selectedRetirementDate: LocalDate? = null,
     vacationDays: Set<LocalDate> = emptySet(),
+    workDays: Set<DayOfWeek> = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY),
     isRangeSelection: Boolean = false,
     vacationStartDate: LocalDate? = null,
     vacationEndDate: LocalDate? = null,
@@ -82,10 +85,13 @@ fun CustomMaterialDatePickerDialog(
 
     val greenOutlineColor = Color(0xFF10B981)
 
-    Dialog(onDismissRequest = onDismissRequest) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth(0.94f)
                 .clip(RoundedCornerShape(28.dp)),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF212121))
         ) {
@@ -215,7 +221,7 @@ fun CustomMaterialDatePickerDialog(
                 val totalCells = (firstDayOfWeek - 1) + daysInMonth
                 val rows = (totalCells + 6) / 7
 
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     for (row in 0 until rows) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -227,6 +233,7 @@ fun CustomMaterialDatePickerDialog(
                                     val date = displayedMonth.atDay(dayNumber)
                                     val isSelectedRetirement = date == selectedRetirementDate || (!isRangeSelection && date == selectedSingleDate)
                                     val isVacationDay = date in activeVacationSet
+                                    val isNonWorkDay = date.dayOfWeek !in workDays
 
                                     Box(
                                         modifier = Modifier
@@ -235,13 +242,17 @@ fun CustomMaterialDatePickerDialog(
                                             .then(
                                                 when {
                                                     isSelectedRetirement -> Modifier.background(Color(0xFFD4B26F))
-                                                    isVacationDay -> Modifier.border(1.5.dp, greenOutlineColor, CircleShape)
+                                                    isVacationDay -> Modifier
+                                                        .background(greenOutlineColor.copy(alpha = 0.06f))
+                                                        .border(1.5.dp, greenOutlineColor, CircleShape)
                                                     else -> Modifier
                                                 }
                                             )
                                             .clickable {
                                                 if (!isRangeSelection) {
                                                     selectedSingleDate = date
+                                                    onDateSelected(date)
+                                                    onDismissRequest()
                                                 } else {
                                                     val start = tempStart
                                                     val end = tempEnd
@@ -264,10 +275,11 @@ fun CustomMaterialDatePickerDialog(
                                             text = dayNumber.toString(),
                                             style = TextStyle(
                                                 fontFamily = CormorantGaramond,
-                                                fontWeight = if (isSelectedRetirement || isVacationDay) FontWeight.Bold else FontWeight.Normal,
+                                                fontWeight = if (isSelectedRetirement) FontWeight.Bold else FontWeight.Normal,
                                                 fontSize = 16.sp,
                                                 color = when {
                                                     isSelectedRetirement -> Color(0xFF111315)
+                                                    isNonWorkDay -> Color.White.copy(alpha = 0.45f)
                                                     else -> Color.White
                                                 }
                                             )
@@ -280,71 +292,73 @@ fun CustomMaterialDatePickerDialog(
                         }
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(4.dp))
+            // Footer Action Buttons (Dedicated bottom panel with contrasting container background)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF2B2930))
+                    .padding(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isRangeSelection) {
+                    TextButton(
+                        onClick = {
+                            tempStart = null
+                            tempEnd = null
+                        }
+                    ) {
+                        Text(
+                            text = "Очистить",
+                            style = TextStyle(
+                                fontFamily = CormorantGaramond,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 15.sp,
+                                color = RetirementColors.Gold.copy(alpha = 0.8f)
+                            )
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp))
+                }
 
-                // Footer Action Buttons
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (isRangeSelection) {
-                        TextButton(
-                            onClick = {
-                                tempStart = null
-                                tempEnd = null
-                            }
-                        ) {
-                            Text(
-                                text = "Очистить",
-                                style = TextStyle(
-                                    fontFamily = CormorantGaramond,
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 15.sp,
-                                    color = RetirementColors.Gold.copy(alpha = 0.8f)
-                                )
+                    TextButton(onClick = onDismissRequest) {
+                        Text(
+                            text = stringResource(R.string.cancel),
+                            style = TextStyle(
+                                fontFamily = CormorantGaramond,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 15.sp,
+                                color = Color.White.copy(alpha = 0.9f)
                             )
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.width(1.dp))
+                        )
                     }
-
-                    Row(
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(onClick = onDismissRequest) {
-                            Text(
-                                text = stringResource(R.string.cancel),
-                                style = TextStyle(
-                                    fontFamily = CormorantGaramond,
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 15.sp,
-                                    color = Color.White.copy(alpha = 0.8f)
-                                )
-                            )
-                        }
-                        TextButton(
-                            onClick = {
-                                if (!isRangeSelection) {
-                                    onDateSelected(selectedSingleDate)
-                                } else {
-                                    onRangeSelected(tempStart, tempEnd)
-                                }
-                                onDismissRequest()
+                    Spacer(modifier = Modifier.width(12.dp))
+                    TextButton(
+                        onClick = {
+                            if (!isRangeSelection) {
+                                onDateSelected(selectedSingleDate)
+                            } else {
+                                onRangeSelected(tempStart, tempEnd)
                             }
-                        ) {
-                            Text(
-                                text = stringResource(R.string.ok),
-                                style = TextStyle(
-                                    fontFamily = CormorantGaramond,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = Color(0xFFD4B26F)
-                                )
-                            )
+                            onDismissRequest()
                         }
+                    ) {
+                        Text(
+                            text = stringResource(R.string.ok),
+                            style = TextStyle(
+                                fontFamily = CormorantGaramond,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = Color(0xFFD4B26F)
+                            )
+                        )
                     }
                 }
             }
