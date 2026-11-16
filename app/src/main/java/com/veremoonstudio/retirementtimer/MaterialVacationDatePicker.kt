@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -59,7 +60,7 @@ fun MaterialVacationDatePickerDialog(
     var selectedDate by remember { mutableStateOf(initialDate) }
     var isTextInputMode by remember { mutableStateOf(false) }
     var textInputDate by remember(selectedDate) { mutableStateOf(selectedDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))) }
-    val localeRu = remember { Locale.forLanguageTag("ru") }
+    val localeUs = remember { Locale.US }
 
     // Precalculate all vacation days (workdays vs non-workdays)
     val vacationDaysMap = remember(vacationPeriods, workDays, holidays) {
@@ -119,7 +120,7 @@ fun MaterialVacationDatePickerDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (isTextInputMode) "Введенная дата" else selectedDate.format(DateTimeFormatter.ofPattern("d MMM yyyy 'г.'", localeRu)),
+                        text = if (isTextInputMode) "Entered Date" else selectedDate.format(DateTimeFormatter.ofPattern("MMM d, yyyy", localeUs)),
                         style = TextStyle(
                             fontFamily = FontFamily.SansSerif,
                             fontSize = if (isTextInputMode) 26.sp else 28.sp,
@@ -169,7 +170,7 @@ fun MaterialVacationDatePickerDialog(
                                 }
                             }
                         },
-                        label = { Text("Дата", color = RetirementColors.Gold) },
+                        label = { Text("Date", color = RetirementColors.Gold) },
                         placeholder = { Text("DD.MM.YYYY", color = Color.White.copy(alpha = 0.4f)) },
                         singleLine = true,
                         textStyle = TextStyle(
@@ -234,7 +235,7 @@ fun MaterialVacationDatePickerDialog(
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = currentDisplayedMonth.format(DateTimeFormatter.ofPattern("LLLL yyyy 'г.'", localeRu)).replaceFirstChar { it.uppercase() },
+                            text = currentDisplayedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", localeUs)),
                             style = TextStyle(
                                 fontFamily = FontFamily.SansSerif,
                                 fontSize = 15.sp,
@@ -327,14 +328,14 @@ fun MaterialVacationDatePickerDialog(
                         }
                     }
                 } else {
-                    // Weekday Header (П В С Ч П С В)
+                    // Weekday Header (Mo Tu We Th Fr Sa Su)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        listOf("П", "В", "С", "Ч", "П", "С", "В").forEach { day ->
+                        listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su").forEach { day ->
                             Text(
                                 text = day,
                                 style = TextStyle(
@@ -412,8 +413,9 @@ fun MaterialVacationDatePickerDialog(
                                                     text = dayNumber.toString(),
                                                     style = TextStyle(
                                                         fontFamily = FontFamily.SansSerif,
-                                                        fontWeight = if (isSelectedDate) FontWeight.Bold else FontWeight.Normal,
+                                                        fontWeight = if (isSelectedDate || isHoliday) FontWeight.Bold else FontWeight.Normal,
                                                         fontSize = 16.sp,
+                                                        textDecoration = TextDecoration.None,
                                                         color = when {
                                                             isSelectedDate -> Color(0xFF111315)
                                                             isHoliday -> RetirementColors.Gold

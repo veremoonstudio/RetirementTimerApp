@@ -103,7 +103,7 @@ fun CustomMaterialDatePickerDialog(
             ) {
                 // Top Header Label
                 Text(
-                    text = if (isRangeSelection) "Выберите дни отпуска" else stringResource(R.string.select_date),
+                    text = if (isRangeSelection) "Select Vacation Days" else stringResource(R.string.select_date),
                     style = TextStyle(
                         fontFamily = CormorantGaramond,
                         fontSize = 14.sp,
@@ -118,14 +118,14 @@ fun CustomMaterialDatePickerDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val localeRu = Locale.forLanguageTag("ru")
+                    val localeUs = Locale.US
                     val headlineText = if (!isRangeSelection) {
-                        selectedSingleDate.format(DateTimeFormatter.ofPattern("d MMM yyyy 'г.'", localeRu))
+                        selectedSingleDate.format(DateTimeFormatter.ofPattern("MMM d, yyyy", localeUs))
                     } else {
                         when {
-                            tempStart == null -> "Нажмите дату начала"
-                            tempEnd == null -> "${tempStart?.format(DateTimeFormatter.ofPattern("d MMM", localeRu))} - ..."
-                            else -> "${tempStart?.format(DateTimeFormatter.ofPattern("d MMM", localeRu))} - ${tempEnd?.format(DateTimeFormatter.ofPattern("d MMM", localeRu))}"
+                            tempStart == null -> "Tap Start Date"
+                            tempEnd == null -> "${tempStart?.format(DateTimeFormatter.ofPattern("MMM d", localeUs))} - ..."
+                            else -> "${tempStart?.format(DateTimeFormatter.ofPattern("MMM d", localeUs))} - ${tempEnd?.format(DateTimeFormatter.ofPattern("MMM d", localeUs))}"
                         }
                     }
 
@@ -156,7 +156,7 @@ fun CustomMaterialDatePickerDialog(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = displayedMonth.format(DateTimeFormatter.ofPattern("LLLL yyyy 'г.'", Locale.forLanguageTag("ru"))).replaceFirstChar { it.uppercase() },
+                            text = displayedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.US)),
                             style = TextStyle(
                                 fontFamily = CormorantGaramond,
                                 fontSize = 16.sp,
@@ -195,12 +195,12 @@ fun CustomMaterialDatePickerDialog(
                     }
                 }
 
-                // Days of week header (П В С Ч П С В)
+                // Days of week header (Mo Tu We Th Fr Sa Su)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    listOf("П", "В", "С", "Ч", "П", "С", "В").forEach { day ->
+                    listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su").forEach { day ->
                         Text(
                             text = day,
                             style = TextStyle(
@@ -311,7 +311,7 @@ fun CustomMaterialDatePickerDialog(
                         }
                     ) {
                         Text(
-                            text = "Очистить",
+                            text = "Clear",
                             style = TextStyle(
                                 fontFamily = CormorantGaramond,
                                 fontWeight = FontWeight.Medium,

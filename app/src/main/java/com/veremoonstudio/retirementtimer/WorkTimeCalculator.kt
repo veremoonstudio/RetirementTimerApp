@@ -53,36 +53,67 @@ object WorkTimeCalculator {
     }
 
     fun calculateWorkTime(now: LocalDateTime, retirementDate: LocalDate, state: WorkTimeUiState): TimeLeftData {
-        val startTime = state.startTime
-        val endTime = state.endTime
-        val rawWorkSeconds = Duration.between(startTime, endTime).seconds
+        val workStart = state.startTime
+        val rawWorkDiff = Duration.between(workStart, state.endTime).toHours()
+        val workEnd = if (rawWorkDiff in 4..16) state.endTime else LocalTime.of(18, 0)
+        val rawWorkSeconds = Duration.between(workStart, workEnd).seconds
         val workSecondsPerDay = if (rawWorkSeconds > 0) rawWorkSeconds else 32400L
 
-        val targetDateTime = retirementDate.atTime(endTime)
+        val targetTime = state.retirementTime
+        val targetDateTime = retirementDate.atTime(targetTime)
         val today = now.toLocalDate()
         val vacationSet = state.vacationDaysSet
 
         if (now.isAfter(targetDateTime)) {
-            var pastWorkDays = 0L
-            var cursor = retirementDate.plusDays(1)
-            val maxCursor = today.minusDays(1)
-            var iterations = 0
-            while (!cursor.isAfter(maxCursor) && iterations < 36500) {
-                if (isWorkDay(cursor, state.workDays, state.holidays, vacationSet)) pastWorkDays++
-                cursor = cursor.plusDays(1)
-                iterations++
-            }
+            var totalPastWorkSeconds = 0L
 
-            var todaySeconds = 0L
-            if (today.isAfter(retirementDate) && isWorkDay(today, state.workDays, state.holidays, vacationSet)) {
-                val nowTime = now.toLocalTime()
-                if (nowTime.isAfter(startTime)) {
-                    val effectiveEnd = if (nowTime.isAfter(endTime) && endTime > startTime) endTime else nowTime
-                    todaySeconds = Duration.between(startTime, effectiveEnd).seconds
+            if (today == retirementDate) {
+                // Target was earlier today
+                if (isWorkDay(today, state.workDays, state.holidays, vacationSet)) {
+                    val nowTime = now.toLocalTime()
+                    if (nowTime > workStart) {
+                        val effStart = if (targetTime > workStart) targetTime else workStart
+                        val effEnd = if (nowTime < workEnd) nowTime else workEnd
+                        if (effEnd > effStart) {
+                            totalPastWorkSeconds += Duration.between(effStart, effEnd).seconds
+                        }
+                    }
+                }
+            } else {
+                // Target date is in the past (retirementDate < today)
+
+                // 1. Elapsed work time on retirementDate itself (after target time up to workEnd)
+                if (isWorkDay(retirementDate, state.workDays, state.holidays, vacationSet)) {
+                    val effStart = if (targetTime > workStart) targetTime else workStart
+                    if (workEnd > effStart) {
+                        totalPastWorkSeconds += Duration.between(effStart, workEnd).seconds
+                    }
+                }
+
+                // 2. Intermediate full work days between retirementDate + 1 and today - 1
+                var cursor = retirementDate.plusDays(1)
+                val maxCursor = today.minusDays(1)
+                var iterations = 0
+                while (!cursor.isAfter(maxCursor) && iterations < 36500) {
+                    if (isWorkDay(cursor, state.workDays, state.holidays, vacationSet)) {
+                        totalPastWorkSeconds += workSecondsPerDay
+                    }
+                    cursor = cursor.plusDays(1)
+                    iterations++
+                }
+
+                // 3. Elapsed work time on today (from workStart up to nowTime)
+                if (isWorkDay(today, state.workDays, state.holidays, vacationSet)) {
+                    val nowTime = now.toLocalTime()
+                    if (nowTime > workStart) {
+                        val effEnd = if (nowTime < workEnd) nowTime else workEnd
+                        if (effEnd > workStart) {
+                            totalPastWorkSeconds += Duration.between(workStart, effEnd).seconds
+                        }
+                    }
                 }
             }
 
-            var totalPastWorkSeconds = (pastWorkDays * workSecondsPerDay) + todaySeconds
             if (totalPastWorkSeconds < 0) totalPastWorkSeconds = 0
 
             val daysPast = totalPastWorkSeconds / workSecondsPerDay
@@ -106,24 +137,53 @@ object WorkTimeCalculator {
         var futureWorkDays = 0L
         var cursor = today.plusDays(1)
         var iterations = 0
-        while (!cursor.isAfter(retirementDate) && iterations < 36500) {
+        while (cursor.isBefore(retirementDate) && iterations < 36500) {
             if (isWorkDay(cursor, state.workDays, state.holidays, vacationSet)) futureWorkDays++
             cursor = cursor.plusDays(1)
             iterations++
         }
 
-        var todaySeconds = 0L
-        if (isWorkDay(today, state.workDays, state.holidays, vacationSet)) {
-            val nowTime = now.toLocalTime()
-            if (nowTime.isBefore(endTime)) {
-                val effectiveStart = if (nowTime.isBefore(startTime)) startTime else nowTime
-                todaySeconds = Duration.between(effectiveStart, endTime).seconds
+        var totalWorkSeconds = 0L
+
+        if (today == retirementDate) {
+            // Target is later today
+            if (isWorkDay(today, state.workDays, state.holidays, vacationSet)) {
+                val nowTime = now.toLocalTime()
+                val effStart = if (nowTime > workStart) nowTime else workStart
+                val effEnd = if (targetTime < workEnd) targetTime else workEnd
+                if (effEnd > effStart) {
+                    totalWorkSeconds += Duration.between(effStart, effEnd).seconds
+                }
+            }
+        } else {
+            // Future retirement date (> today)
+
+            // 1. Remaining work time today
+            if (isWorkDay(today, state.workDays, state.holidays, vacationSet)) {
+                val nowTime = now.toLocalTime()
+                if (nowTime < workEnd) {
+                    val effStart = if (nowTime > workStart) nowTime else workStart
+                    totalWorkSeconds += Duration.between(effStart, workEnd).seconds
+                }
+            }
+
+            // 2. Full work days in between
+            totalWorkSeconds += (futureWorkDays * workSecondsPerDay)
+
+            // 3. Work time on retirementDate itself (from workStart up to targetTime)
+            if (isWorkDay(retirementDate, state.workDays, state.holidays, vacationSet)) {
+                val effEnd = if (targetTime < workEnd) targetTime else workEnd
+                if (effEnd > workStart) {
+                    totalWorkSeconds += Duration.between(workStart, effEnd).seconds
+                }
             }
         }
 
-        var totalWorkSeconds = (futureWorkDays * workSecondsPerDay) + todaySeconds
         if (vacationSet.isEmpty() && state.vacationHours > 0) {
-            totalWorkSeconds -= (state.vacationHours * 3600L)
+            val vacSeconds = state.vacationHours * 3600L
+            if (totalWorkSeconds > vacSeconds) {
+                totalWorkSeconds -= vacSeconds
+            }
         }
         if (totalWorkSeconds < 0) totalWorkSeconds = 0
 

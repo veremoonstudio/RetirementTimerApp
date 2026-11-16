@@ -211,4 +211,35 @@ class WorkTimeCalculatorTest {
         assertEquals("00", result.minutes)
         assertEquals("00", result.seconds)
     }
+
+    @Test
+    fun testCalculateWorkTime_userExactScenario_11amYesterdayTo12h46m49sToday() {
+        // Retirement target: 2026-11-12 at 11:00 AM
+        val retirementDate = LocalDate.of(2026, 11, 12)
+        val retirementTime = LocalTime.of(11, 0, 0)
+        // Now: Friday 2026-11-13 at 12:46:49 PM
+        val now = LocalDateTime.of(2026, 11, 13, 12, 46, 49)
+
+        val state = WorkTimeUiState(
+            isWorkTimeMode = true,
+            retirementDate = retirementDate,
+            retirementTime = retirementTime,
+            workDays = defaultWorkDays,
+            startTime = LocalTime.of(9, 0),
+            endTime = LocalTime.of(18, 0), // 9h work day
+            vacationHours = 0,
+            holidays = emptyList()
+        )
+
+        val result = WorkTimeCalculator.calculateWorkTime(now, retirementDate, state)
+
+        // Elapsed work time:
+        // Nov 12: 11:00 to 18:00 = 7 hours
+        // Nov 13: 09:00 to 12:46:49 = 3h 46m 49s
+        // Total = 10h 46m 49s = 1 work day (9h) + 1h 46m 49s
+        assertEquals("01", result.days)
+        assertEquals("01", result.hours)
+        assertEquals("46", result.minutes)
+        assertEquals("49", result.seconds)
+    }
 }

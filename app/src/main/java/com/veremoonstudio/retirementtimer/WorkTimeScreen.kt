@@ -63,6 +63,7 @@ fun WorkTimeScreen(
         uiState = uiState,
         onToggleMode = { viewModel.toggleMode(it) },
         onUpdateRetirementDate = { viewModel.updateRetirementDate(it) },
+        onUpdateRetirementDateAndTime = { date, time -> viewModel.updateRetirementDateAndTime(date, time) },
         onUpdateTimes = { start, end -> viewModel.updateTimes(start, end) },
         onNavigateToPremium = onNavigateToPremium,
         onNavigateToBackground = onNavigateToBackground,
@@ -76,6 +77,7 @@ fun WorkTimeScreenContent(
     uiState: WorkTimeUiState,
     onToggleMode: (Boolean) -> Unit = {},
     onUpdateRetirementDate: (LocalDate) -> Unit = {},
+    onUpdateRetirementDateAndTime: (LocalDate, LocalTime) -> Unit = { _, _ -> },
     onUpdateTimes: (LocalTime, LocalTime) -> Unit = { _, _ -> },
     onNavigateToPremium: () -> Unit = {},
     onNavigateToBackground: () -> Unit = {},
@@ -234,7 +236,7 @@ fun WorkTimeScreenContent(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = ("AT " + uiState.endTime.format(DateTimeFormatter.ofPattern("h:mm a", Locale.US))).uppercase(Locale.US),
+                        text = ("AT " + uiState.retirementTime.format(DateTimeFormatter.ofPattern("h:mm a", Locale.US))).uppercase(Locale.US),
                         color = RetirementColors.Cream,
                         fontFamily = CinzelFontFamily,
                         fontWeight = FontWeight.Normal,
@@ -244,8 +246,8 @@ fun WorkTimeScreenContent(
                     )
                 }
 
-                val isDatePassed = remember(uiState.retirementDate, uiState.endTime, uiState.timeLeft) {
-                    LocalDateTime.now().isAfter(uiState.retirementDate.atTime(uiState.endTime))
+                val isDatePassed = remember(uiState.retirementDate, uiState.retirementTime, uiState.timeLeft) {
+                    LocalDateTime.now().isAfter(uiState.retirementDate.atTime(uiState.retirementTime))
                 }
                 val counterTitle = when {
                     isDatePassed && uiState.isWorkTimeMode -> stringResource(R.string.work_time_past)
@@ -297,16 +299,14 @@ fun WorkTimeScreenContent(
             TimePickerDialog(
                 onDismiss = { showTimePicker = false },
                 onConfirm = { hour, minute ->
-                    pendingDate?.let { date ->
-                        onUpdateRetirementDate(date)
-                    }
                     val targetTime = LocalTime.of(hour, minute)
-                    val validEnd = if (targetTime > uiState.startTime) targetTime else uiState.startTime.plusHours(8)
-                    onUpdateTimes(uiState.startTime, validEnd)
+                    val targetDate = pendingDate ?: uiState.retirementDate
+                    onUpdateRetirementDateAndTime(targetDate, targetTime)
+                    pendingDate = null
                     showTimePicker = false
                 },
-                initialHour = uiState.endTime.hour,
-                initialMinute = uiState.endTime.minute
+                initialHour = uiState.retirementTime.hour,
+                initialMinute = uiState.retirementTime.minute
             )
         }
     }

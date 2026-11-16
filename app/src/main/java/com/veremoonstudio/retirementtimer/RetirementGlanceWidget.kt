@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -61,12 +62,31 @@ fun calculateWidgetTimeLeft(settings: SettingsData): TimeLeftData {
     val now = LocalDateTime.now()
     val retirementDate = if (settings.retirementDateEpoch != -1L) LocalDate.ofEpochDay(settings.retirementDateEpoch) else LocalDate.now().plusYears(5)
     val startTime = try { LocalTime.parse(settings.startTimeStr) } catch (_: Exception) { LocalTime.of(9, 0) }
-    val endTime = try { LocalTime.parse(settings.endTimeStr) } catch (_: Exception) { LocalTime.of(18, 0) }
+    val rawEnd = try { LocalTime.parse(settings.endTimeStr) } catch (_: Exception) { LocalTime.of(18, 0) }
+    val endTime = if (Duration.between(startTime, rawEnd).toHours() in 4..16) rawEnd else LocalTime.of(18, 0)
+
+    val retTime = try {
+        if (settings.retirementTimeStr.isNotEmpty()) {
+            LocalTime.parse(settings.retirementTimeStr)
+        } else {
+            if (rawEnd != endTime) rawEnd else LocalTime.of(18, 0)
+        }
+    } catch (_: Exception) { LocalTime.of(18, 0) }
+
+    val defaultWorkDays = setOf(
+        DayOfWeek.MONDAY,
+        DayOfWeek.TUESDAY,
+        DayOfWeek.WEDNESDAY,
+        DayOfWeek.THURSDAY,
+        DayOfWeek.FRIDAY
+    )
+    val workDaysSet = if (settings.workDays.isNotEmpty()) settings.workDays.toSet() else defaultWorkDays
 
     val state = WorkTimeUiState(
         isWorkTimeMode = settings.isWorkTimeMode,
         retirementDate = retirementDate,
-        workDays = settings.workDays.toSet(),
+        retirementTime = retTime,
+        workDays = workDaysSet,
         startTime = startTime,
         endTime = endTime,
         vacationHours = settings.vacationHours,
@@ -77,7 +97,7 @@ fun calculateWidgetTimeLeft(settings: SettingsData): TimeLeftData {
     return if (settings.isWorkTimeMode) {
         WorkTimeCalculator.calculateWorkTime(now, retirementDate, state)
     } else {
-        WorkTimeCalculator.calculateTotalTime(now, retirementDate, endTime)
+        WorkTimeCalculator.calculateTotalTime(now, retirementDate, retTime)
     }
 }
 

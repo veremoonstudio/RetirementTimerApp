@@ -1,15 +1,23 @@
 package com.veremoonstudio.retirementtimer
 
 import android.app.Activity
+import android.os.SystemClock
 import com.google.android.ump.ConsentInformation
 import com.google.android.ump.UserMessagingPlatform
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,14 +27,19 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragIndicator
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -34,8 +47,11 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -46,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -76,7 +93,7 @@ fun SettingsScreen(
 
     val isPremiumUnlocked by viewModel.billingManager.isPremiumUnlocked.collectAsState()
     val isPremium = BuildConfig.IS_PREMIUM || isPremiumUnlocked
-    val bottomPadding = if (!isPremium) 155.dp else 24.dp
+    val bottomPadding = if (!isPremium) 100.dp else 24.dp
 
     MarbleBackground(selectedBackground = uiState.selectedBackground) {
         Scaffold(
@@ -163,7 +180,7 @@ fun SettingsScreen(
                         value = uiState.startTime.format(DateTimeFormatter.ofPattern("HH:mm")),
                         onClick = { showStartTimePicker = true }
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     SettingsRow(
                         label = stringResource(R.string.end_time),
                         value = uiState.endTime.format(DateTimeFormatter.ofPattern("HH:mm")),
@@ -216,11 +233,16 @@ fun SettingsScreen(
                         }
                     }
 
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         val fmtDate = DateTimeFormatter.ofPattern("dd.MM.yyyy")
                         val fmtMonthStr = DateTimeFormatter.ofPattern("MMM", Locale.US)
+                        val sortedVacationPeriods = remember(uiState.vacationPeriods) {
+                            uiState.vacationPeriods.sortedBy { it.startDate }
+                        }
 
-                        uiState.vacationPeriods.forEach { period ->
+                        sortedVacationPeriods.forEach { period ->
                             val firstDate = if (period.startDate.isBefore(period.endDate)) period.startDate else period.endDate
                             val lastDate = if (period.startDate.isBefore(period.endDate)) period.endDate else period.startDate
 
@@ -242,10 +264,7 @@ fun SettingsScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color.White.copy(alpha = 0.05f))
-                                    .border(1.dp, RetirementColors.Gold.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    .padding(horizontal = 2.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
@@ -354,14 +373,16 @@ fun SettingsScreen(
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         // Variant 3 Gold Pill Button for Adding New Vacation Period
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp)
-                                .clip(RoundedCornerShape(24.dp))
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(20.dp))
                                 .background(Color.White.copy(alpha = 0.03f))
-                                .border(1.dp, RetirementColors.Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                                .border(1.dp, RetirementColors.Gold.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
                                 .clickable {
                                     editingVacationPeriodId = null
                                     showVacationDatePicker = true
@@ -376,13 +397,13 @@ fun SettingsScreen(
                                     imageVector = Icons.Filled.Add,
                                     contentDescription = "Add Vacation Period",
                                     tint = RetirementColors.Gold,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Text(
                                     text = "Add Vacation Period",
                                     style = TextStyle(
                                         fontFamily = PlayfairDisplay,
-                                        fontSize = 17.sp,
+                                        fontSize = 16.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = RetirementColors.Gold
                                     )
@@ -401,20 +422,17 @@ fun SettingsScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.White.copy(alpha = 0.05f))
-                            .border(1.dp, RetirementColors.Gold.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                            .padding(vertical = 2.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         // Variant 3 Gold Pill Button for Adding New Holiday
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp)
-                                .clip(RoundedCornerShape(24.dp))
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(20.dp))
                                 .background(Color.White.copy(alpha = 0.03f))
-                                .border(1.dp, RetirementColors.Gold.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
+                                .border(1.dp, RetirementColors.Gold.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
                                 .clickable { showAddHolidayDialog = true },
                             contentAlignment = Alignment.Center
                         ) {
@@ -426,13 +444,13 @@ fun SettingsScreen(
                                     imageVector = Icons.Filled.Add,
                                     contentDescription = stringResource(R.string.add_new_holiday),
                                     tint = RetirementColors.Gold,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Text(
                                     text = stringResource(R.string.add_new_holiday),
                                     style = TextStyle(
                                         fontFamily = PlayfairDisplay,
-                                        fontSize = 17.sp,
+                                        fontSize = 16.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = RetirementColors.Gold
                                     )
@@ -442,64 +460,160 @@ fun SettingsScreen(
 
                         Spacer(modifier = Modifier.height(2.dp))
 
-                        val holidaysScrollState = rememberScrollState()
-                        val stopNestedScrollConnection = remember {
+                        val blockParentScrollConnection = remember {
                             object : NestedScrollConnection {
                                 override fun onPostScroll(
                                     consumed: Offset,
                                     available: Offset,
                                     source: NestedScrollSource
                                 ): Offset {
-                                    return Offset(0f, available.y)
+                                    return available
                                 }
 
                                 override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                                    return Velocity(0f, available.y)
+                                    return available
                                 }
                             }
                         }
 
-                        Column(
+                        var activeReorderHoliday by remember { mutableStateOf<Holiday?>(null) }
+                        var lastArrowClickTime by remember { mutableLongStateOf(0L) }
+                        var localHolidays by remember(uiState.holidays) { mutableStateOf(uiState.holidays) }
+                        val lazyListState = rememberLazyListState()
+                        val coroutineScope = rememberCoroutineScope()
+                        val density = LocalDensity.current
+                        val itemHeightPx = with(density) { 44.dp.toPx() }
+
+                        LazyColumn(
+                            state = lazyListState,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(230.dp)
-                                .nestedScroll(stopNestedScrollConnection)
-                                .verticalScroll(holidaysScrollState),
+                                .nestedScroll(blockParentScrollConnection)
+                                .clickable(
+                                    enabled = activeReorderHoliday != null,
+                                    onClick = { activeReorderHoliday = null }
+                                ),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            uiState.holidays.forEach { holiday ->
+                            itemsIndexed(
+                                items = localHolidays,
+                                key = { _, holiday -> "${holiday.name}_${holiday.month}_${holiday.day}" }
+                            ) { index, holiday ->
+                                val isReorderingThis = activeReorderHoliday == holiday
+
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .combinedClickable(
-                                            onClick = {
-                                                val newList = uiState.holidays.map {
-                                                    if (it == holiday) it.copy(isEnabled = !it.isEnabled) else it
-                                                }
-                                                viewModel.updateHolidays(newList)
-                                            },
-                                            onLongClick = { holidayToEdit = holiday }
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            if (isReorderingThis) Color.White.copy(alpha = 0.08f)
+                                            else Color.Transparent
                                         )
-                                        .padding(vertical = 4.dp),
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text(
-                                        text = "${holiday.name} (${holiday.month}/${holiday.day})",
-                                        style = TextStyle(
-                                            fontFamily = PlayfairDisplay,
-                                            fontSize = 17.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = RetirementColors.Cream
-                                        ),
-                                        modifier = Modifier.weight(1f, fill = false)
-                                    )
+                                    Row(
+                                        modifier = Modifier.weight(1f),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        if (isReorderingThis) {
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                modifier = Modifier.padding(end = 8.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.ArrowDropUp,
+                                                    contentDescription = "Move Up",
+                                                    tint = if (index > 0) RetirementColors.Gold else RetirementColors.Gold.copy(alpha = 0.3f),
+                                                    modifier = Modifier
+                                                        .size(22.dp)
+                                                        .clickable(enabled = index > 0) {
+                                                            val now = SystemClock.elapsedRealtime()
+                                                            if (now - lastArrowClickTime < 350L) return@clickable
+                                                            lastArrowClickTime = now
+                                                            if (index > 0) {
+                                                                val targetIndex = index - 1
+                                                                val mutable = localHolidays.toMutableList()
+                                                                val item = mutable.removeAt(index)
+                                                                mutable.add(targetIndex, item)
+                                                                localHolidays = mutable
+                                                                activeReorderHoliday = holiday
+                                                                viewModel.updateHolidays(mutable)
+                                                                coroutineScope.launch {
+                                                                    val firstVisible = lazyListState.firstVisibleItemIndex
+                                                                    if (targetIndex <= firstVisible + 1) {
+                                                                        lazyListState.animateScrollToItem(targetIndex)
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                )
+                                                Icon(
+                                                    imageVector = Icons.Default.ArrowDropDown,
+                                                    contentDescription = "Move Down",
+                                                    tint = if (index < localHolidays.lastIndex) RetirementColors.Gold else RetirementColors.Gold.copy(alpha = 0.3f),
+                                                    modifier = Modifier
+                                                        .size(22.dp)
+                                                        .clickable(enabled = index < localHolidays.lastIndex) {
+                                                            val now = SystemClock.elapsedRealtime()
+                                                            if (now - lastArrowClickTime < 350L) return@clickable
+                                                            lastArrowClickTime = now
+                                                            if (index < localHolidays.lastIndex) {
+                                                                val targetIndex = index + 1
+                                                                val mutable = localHolidays.toMutableList()
+                                                                val item = mutable.removeAt(index)
+                                                                mutable.add(targetIndex, item)
+                                                                localHolidays = mutable
+                                                                activeReorderHoliday = holiday
+                                                                viewModel.updateHolidays(mutable)
+                                                                coroutineScope.launch {
+                                                                    val visibleItems = lazyListState.layoutInfo.visibleItemsInfo
+                                                                    val lastVisibleIndex = visibleItems.lastOrNull()?.index ?: localHolidays.lastIndex
+                                                                    if (targetIndex >= lastVisibleIndex - 1) {
+                                                                        lazyListState.animateScrollToItem((targetIndex - 2).coerceAtLeast(0))
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                )
+                                            }
+                                        }
+
+                                        Text(
+                                            text = "${holiday.name} (${holiday.month}/${holiday.day})",
+                                            style = TextStyle(
+                                                fontFamily = PlayfairDisplay,
+                                                fontSize = 17.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = if (isReorderingThis) RetirementColors.Gold else RetirementColors.Cream
+                                            ),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .combinedClickable(
+                                                    onClick = {
+                                                        if (activeReorderHoliday != null) {
+                                                            activeReorderHoliday = null
+                                                        } else {
+                                                            holidayToEdit = holiday
+                                                        }
+                                                    },
+                                                    onLongClick = {
+                                                        activeReorderHoliday = holiday
+                                                    }
+                                                )
+                                        )
+                                    }
+
                                     Checkbox(
                                         checked = holiday.isEnabled,
                                         onCheckedChange = { checked ->
-                                            val newList = uiState.holidays.map {
+                                            activeReorderHoliday = null
+                                            val newList = localHolidays.map {
                                                 if (it == holiday) it.copy(isEnabled = checked) else it
                                             }
+                                            localHolidays = newList
                                             viewModel.updateHolidays(newList)
                                         },
                                         colors = CheckboxDefaults.colors(
@@ -514,6 +628,9 @@ fun SettingsScreen(
 
                     if (showAddHolidayDialog) {
                         AddHolidayDialog(
+                            vacationPeriods = uiState.vacationPeriods,
+                            workDays = uiState.workDays,
+                            holidays = uiState.holidays,
                             onDismiss = { showAddHolidayDialog = false },
                             onConfirm = { name, month, day ->
                                 val newList = uiState.holidays + Holiday(name, month, day)
@@ -526,6 +643,9 @@ fun SettingsScreen(
                     if (holidayToEdit != null) {
                         EditHolidayDialog(
                             holiday = holidayToEdit!!,
+                            vacationPeriods = uiState.vacationPeriods,
+                            workDays = uiState.workDays,
+                            holidays = uiState.holidays,
                             onDismiss = { holidayToEdit = null },
                             onUpdate = { old: Holiday, new: Holiday ->
                                 val newList = uiState.holidays.map { if (it == old) new else it }
@@ -739,12 +859,12 @@ fun CompactVacationDateRangePickerDialog(
                 HorizontalDivider(color = Color.White.copy(alpha = 0.1f), thickness = 1.dp)
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Days of week header (П В С Ч П С В)
+                // Days of week header (Mo Tu We Th Fr Sa Su)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    listOf("П", "В", "С", "Ч", "П", "С", "В").forEach { day ->
+                    listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su").forEach { day ->
                         Text(
                             text = day,
                             style = TextStyle(
@@ -853,8 +973,9 @@ fun CompactVacationDateRangePickerDialog(
                                                         text = dayNumber.toString(),
                                                         style = TextStyle(
                                                             fontFamily = FontFamily.SansSerif,
-                                                            fontWeight = FontWeight.Normal,
+                                                            fontWeight = if (isHoliday) FontWeight.Bold else FontWeight.Normal,
                                                             fontSize = 15.sp,
+                                                            textDecoration = TextDecoration.None,
                                                             color = when {
                                                                 isHoliday -> RetirementColors.Gold
                                                                 isInVacationRange && !isWorkDay -> Color.White.copy(alpha = 0.85f)
@@ -958,7 +1079,7 @@ fun SettingsSectionTitle(title: String) {
             letterSpacing = 2.sp,
             color = RetirementColors.Gold
         ),
-        modifier = Modifier.padding(bottom = 8.dp)
+        modifier = Modifier.padding(bottom = 4.dp)
     )
 }
 
@@ -968,10 +1089,8 @@ fun SettingsRow(label: String, value: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.White.copy(alpha = 0.05f))
-            .border(1.dp, RetirementColors.Gold.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
             .clickable { onClick() }
-            .padding(16.dp),
+            .padding(horizontal = 4.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1048,6 +1167,9 @@ fun TimePickerDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddHolidayDialog(
+    vacationPeriods: List<VacationPeriod> = emptyList(),
+    workDays: Set<DayOfWeek> = emptySet(),
+    holidays: List<Holiday> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (String, Int, Int) -> Unit
 ) {
@@ -1103,46 +1225,20 @@ fun AddHolidayDialog(
     )
 
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState()
-        DatePickerDialog(
+        MaterialVacationDatePickerDialog(
+            initialDate = selectedDate,
+            vacationPeriods = vacationPeriods,
+            workDays = workDays,
+            holidays = holidays,
             onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        selectedDate = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
-                    }
-                    showDatePicker = false
-                }) {
-                    Text(stringResource(R.string.ok), color = RetirementColors.Gold)
-                }
+            onDateSelected = { date ->
+                selectedDate = date
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.cancel), color = RetirementColors.Cream)
-                }
+            onConfirmDateOnly = { date ->
+                selectedDate = date
+                showDatePicker = false
             }
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    containerColor = RetirementColors.Background,
-                    titleContentColor = RetirementColors.Gold,
-                    headlineContentColor = RetirementColors.Gold,
-                    weekdayContentColor = RetirementColors.Gold,
-                    subheadContentColor = RetirementColors.Gold,
-                    yearContentColor = RetirementColors.Cream,
-                    currentYearContentColor = RetirementColors.Gold,
-                    selectedYearContentColor = Color(0xFF111315),
-                    selectedYearContainerColor = RetirementColors.Gold,
-                    dayContentColor = RetirementColors.Cream,
-                    disabledDayContentColor = RetirementColors.Cream.copy(alpha = 0.3f),
-                    selectedDayContainerColor = RetirementColors.Gold,
-                    selectedDayContentColor = Color(0xFF111315),
-                    todayContentColor = RetirementColors.Gold,
-                    todayDateBorderColor = RetirementColors.Gold
-                )
-            )
-        }
+        )
     }
 }
 
@@ -1150,6 +1246,9 @@ fun AddHolidayDialog(
 @Composable
 fun EditHolidayDialog(
     holiday: Holiday,
+    vacationPeriods: List<VacationPeriod> = emptyList(),
+    workDays: Set<DayOfWeek> = emptySet(),
+    holidays: List<Holiday> = emptyList(),
     onDismiss: () -> Unit,
     onUpdate: (Holiday, Holiday) -> Unit,
     onDelete: (Holiday) -> Unit
@@ -1236,28 +1335,19 @@ fun EditHolidayDialog(
     )
 
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDate.toEpochDay() * 86400000L
-        )
-        DatePickerDialog(
+        MaterialVacationDatePickerDialog(
+            initialDate = selectedDate,
+            vacationPeriods = vacationPeriods,
+            workDays = workDays,
+            holidays = holidays,
             onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        selectedDate = LocalDate.ofEpochDay(Math.floorDiv(millis, 86400000L))
-                    }
-                    showDatePicker = false
-                }) {
-                    Text(stringResource(R.string.ok), color = RetirementColors.Gold)
-                }
+            onDateSelected = { date ->
+                selectedDate = date
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.cancel), color = RetirementColors.Cream)
-                }
+            onConfirmDateOnly = { date ->
+                selectedDate = date
+                showDatePicker = false
             }
-        ) {
-            DatePicker(state = datePickerState)
-        }
+        )
     }
 }

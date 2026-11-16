@@ -63,6 +63,7 @@ data class SettingsData(
     ),
     val startTimeStr: String = "09:00",
     val endTimeStr: String = "18:00",
+    val retirementTimeStr: String = "18:00",
     val vacationHours: Int = 0,
     val vacationStartEpoch: Long = -1L,
     val vacationEndEpoch: Long = -1L,
@@ -96,6 +97,7 @@ data class TimeLeftData(
 data class WorkTimeUiState(
     val isWorkTimeMode: Boolean = true,
     val retirementDate: LocalDate = LocalDate.now().plusYears(5),
+    val retirementTime: LocalTime = LocalTime.of(18, 0),
     val workDays: Set<DayOfWeek> = setOf(
         DayOfWeek.MONDAY,
         DayOfWeek.TUESDAY,

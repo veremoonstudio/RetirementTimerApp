@@ -37,6 +37,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             getApplication<Application>().dataStore.data
                 .map { preferences -> preferences[SETTINGS_KEY] }
+                .distinctUntilChanged()
                 .collect { json ->
                     if (json != null) {
                         try {
@@ -59,19 +60,32 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
                                 data.holidays.map { h -> Holiday(h.name, h.month, h.day, h.isEnabled) }
                             }
 
-                            val firstP = periodsList.firstOrNull()
+                            val sortedPeriodsList = periodsList.sortedBy { it.startDate }
+                            val firstP = sortedPeriodsList.firstOrNull()
+                            val parsedStart = try { LocalTime.parse(data.startTimeStr) } catch (_: Exception) { LocalTime.of(9, 0) }
+                            val rawEnd = try { LocalTime.parse(data.endTimeStr) } catch (_: Exception) { LocalTime.of(18, 0) }
+                            val parsedEnd = if (Duration.between(parsedStart, rawEnd).toHours() in 4..16) rawEnd else LocalTime.of(18, 0)
+
+                            val retTime = try {
+                                if (json.contains("\"retirementTimeStr\"")) {
+                                    LocalTime.parse(data.retirementTimeStr)
+                                } else {
+                                    if (rawEnd != parsedEnd) rawEnd else LocalTime.of(18, 0)
+                                }
+                            } catch (_: Exception) { LocalTime.of(18, 0) }
 
                             _uiState.update {
                                 it.copy(
                                     isWorkTimeMode = data.isWorkTimeMode,
                                     retirementDate = targetDate,
+                                    retirementTime = retTime,
                                     workDays = data.workDays.toSet(),
-                                    startTime = try { LocalTime.parse(data.startTimeStr) } catch (_: Exception) { LocalTime.of(9, 0) },
-                                    endTime = try { LocalTime.parse(data.endTimeStr) } catch (_: Exception) { LocalTime.of(18, 0) },
+                                    startTime = parsedStart,
+                                    endTime = parsedEnd,
                                     vacationHours = data.vacationHours,
                                     vacationStartDate = firstP?.startDate ?: startVac,
                                     vacationEndDate = firstP?.endDate ?: endVac,
-                                    vacationPeriods = periodsList,
+                                    vacationPeriods = sortedPeriodsList,
                                     holidays = holidaysList,
                                     selectedBackground = data.selectedBackground
                                 )
@@ -94,6 +108,16 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         saveAllSettings()
     }
 
+    fun updateRetirementDateAndTime(date: LocalDate, targetTime: LocalTime) {
+        _uiState.update {
+            it.copy(
+                retirementDate = date,
+                retirementTime = targetTime
+            )
+        }
+        recalculateVacationHoursAndSave()
+    }
+
     fun updateWorkDays(days: Set<DayOfWeek>) {
         _uiState.update { it.copy(workDays = days) }
         recalculateVacationHoursAndSave()
@@ -113,7 +137,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         val first = if (start.isBefore(end)) start else end
         val last = if (start.isBefore(end)) end else start
         val newPeriod = VacationPeriod(startDate = first, endDate = last)
-        val updatedList = _uiState.value.vacationPeriods + newPeriod
+        val updatedList = (_uiState.value.vacationPeriods + newPeriod).sortedBy { it.startDate }
         _uiState.update { it.copy(vacationPeriods = updatedList) }
         recalculateVacationHoursAndSave()
     }
@@ -123,13 +147,13 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         val last = if (start.isBefore(end)) end else start
         val updatedList = _uiState.value.vacationPeriods.map {
             if (it.id == id) it.copy(startDate = first, endDate = last) else it
-        }
+        }.sortedBy { it.startDate }
         _uiState.update { it.copy(vacationPeriods = updatedList) }
         recalculateVacationHoursAndSave()
     }
 
     fun deleteVacationPeriod(id: String) {
-        val updatedList = _uiState.value.vacationPeriods.filter { it.id != id }
+        val updatedList = _uiState.value.vacationPeriods.filter { it.id != id }.sortedBy { it.startDate }
         _uiState.update { it.copy(vacationPeriods = updatedList) }
         recalculateVacationHoursAndSave()
     }
@@ -145,11 +169,13 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         val totalVacWorkDays = _uiState.value.vacationDaysSet.size
         val totalHours = totalVacWorkDays * hoursPerWorkDay
 
-        val firstPeriod = _uiState.value.vacationPeriods.firstOrNull()
+        val sortedPeriods = _uiState.value.vacationPeriods.sortedBy { it.startDate }
+        val firstPeriod = sortedPeriods.firstOrNull()
 
         _uiState.update {
             it.copy(
                 vacationHours = totalHours,
+                vacationPeriods = sortedPeriods,
                 vacationStartDate = firstPeriod?.startDate,
                 vacationEndDate = firstPeriod?.endDate
             )
@@ -178,6 +204,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
             workDays = state.workDays.toList(),
             startTimeStr = state.startTime.toString(),
             endTimeStr = state.endTime.toString(),
+            retirementTimeStr = state.retirementTime.toString(),
             vacationHours = state.vacationHours,
             vacationStartEpoch = state.vacationStartDate?.toEpochDay() ?: -1L,
             vacationEndEpoch = state.vacationEndDate?.toEpochDay() ?: -1L,
@@ -214,7 +241,7 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         if (state.isWorkTimeMode) {
             _uiState.update { it.copy(timeLeft = WorkTimeCalculator.calculateWorkTime(now, state.retirementDate, state)) }
         } else {
-            _uiState.update { it.copy(timeLeft = WorkTimeCalculator.calculateTotalTime(now, state.retirementDate, state.endTime)) }
+            _uiState.update { it.copy(timeLeft = WorkTimeCalculator.calculateTotalTime(now, state.retirementDate, state.retirementTime)) }
         }
     }
 }
