@@ -138,7 +138,6 @@ fun CurrentSettingsPagePreviewContent(
                 SampleVacationItem("24.03.2027 – 10.04.2027", "13 d", "MAR-APR")
             }
             
-            Spacer(modifier = Modifier.height(10.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -248,15 +247,15 @@ private fun SampleHolidayRow(name: String, date: String, isChecked: Boolean, isR
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(if (isReordering) Color.White.copy(alpha = 0.08f) else Color.Transparent)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             if (isReordering) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(end = 8.dp)) {
-                    Icon(imageVector = Icons.Default.ArrowDropUp, contentDescription = null, tint = RetirementColors.Gold, modifier = Modifier.size(20.dp))
-                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, tint = RetirementColors.Gold, modifier = Modifier.size(20.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(end = 6.dp)) {
+                    Icon(imageVector = Icons.Default.ArrowDropUp, contentDescription = null, tint = RetirementColors.Gold, modifier = Modifier.size(18.dp))
+                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, tint = RetirementColors.Gold, modifier = Modifier.size(18.dp))
                 }
             }
             Text(text = "$name ($date)", style = TextStyle(fontFamily = PlayfairDisplay, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = if (isReordering) RetirementColors.Gold else RetirementColors.Cream), modifier = Modifier.weight(1f))

@@ -373,8 +373,6 @@ fun SettingsScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
                         // Variant 3 Gold Pill Button for Adding New Vacation Period
                         Box(
                             modifier = Modifier
@@ -418,6 +416,8 @@ fun SettingsScreen(
                     SettingsSectionTitle(stringResource(R.string.holidays_title))
                     var showAddHolidayDialog by remember { mutableStateOf(false) }
                     var holidayToEdit by remember { mutableStateOf<Holiday?>(null) }
+
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Column(
                         modifier = Modifier
@@ -510,7 +510,7 @@ fun SettingsScreen(
                                             if (isReorderingThis) Color.White.copy(alpha = 0.08f)
                                             else Color.Transparent
                                         )
-                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                        .padding(horizontal = 8.dp, vertical = 3.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
@@ -521,14 +521,14 @@ fun SettingsScreen(
                                         if (isReorderingThis) {
                                             Column(
                                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                                modifier = Modifier.padding(end = 8.dp)
+                                                modifier = Modifier.padding(end = 6.dp)
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.ArrowDropUp,
                                                     contentDescription = "Move Up",
                                                     tint = if (index > 0) RetirementColors.Gold else RetirementColors.Gold.copy(alpha = 0.3f),
                                                     modifier = Modifier
-                                                        .size(22.dp)
+                                                        .size(18.dp)
                                                         .clickable(enabled = index > 0) {
                                                             val now = SystemClock.elapsedRealtime()
                                                             if (now - lastArrowClickTime < 350L) return@clickable
@@ -555,7 +555,7 @@ fun SettingsScreen(
                                                     contentDescription = "Move Down",
                                                     tint = if (index < localHolidays.lastIndex) RetirementColors.Gold else RetirementColors.Gold.copy(alpha = 0.3f),
                                                     modifier = Modifier
-                                                        .size(22.dp)
+                                                        .size(18.dp)
                                                         .clickable(enabled = index < localHolidays.lastIndex) {
                                                             val now = SystemClock.elapsedRealtime()
                                                             if (now - lastArrowClickTime < 350L) return@clickable
