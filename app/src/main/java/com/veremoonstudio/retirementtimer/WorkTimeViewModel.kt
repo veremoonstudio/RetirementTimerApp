@@ -74,6 +74,8 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
                                 }
                             } catch (_: Exception) { LocalTime.of(18, 0) }
 
+                            val sortMode = try { HolidaySortMode.valueOf(data.holidaySortModeName) } catch (_: Exception) { HolidaySortMode.BY_DATE }
+
                             _uiState.update {
                                 it.copy(
                                     isWorkTimeMode = data.isWorkTimeMode,
@@ -87,7 +89,8 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
                                     vacationEndDate = firstP?.endDate ?: endVac,
                                     vacationPeriods = sortedPeriodsList,
                                     holidays = holidaysList,
-                                    selectedBackground = data.selectedBackground
+                                    selectedBackground = data.selectedBackground,
+                                    holidaySortMode = sortMode
                                 )
                             }
                         } catch (_: Exception) {
@@ -188,6 +191,11 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
         recalculateVacationHoursAndSave()
     }
 
+    fun updateHolidaySortMode(mode: HolidaySortMode) {
+        _uiState.update { it.copy(holidaySortMode = mode) }
+        saveAllSettings()
+    }
+
     fun updateSelectedBackground(background: String) {
         _uiState.update { it.copy(selectedBackground = background) }
         saveAllSettings()
@@ -210,7 +218,8 @@ class WorkTimeViewModel(application: Application) : AndroidViewModel(application
             vacationEndEpoch = state.vacationEndDate?.toEpochDay() ?: -1L,
             vacationPeriods = savedPeriods,
             holidays = state.holidays.map { h -> SavedHoliday(h.name, h.month, h.day, h.isEnabled) },
-            selectedBackground = state.selectedBackground
+            selectedBackground = state.selectedBackground,
+            holidaySortModeName = state.holidaySortMode.name
         )
         viewModelScope.launch {
             getApplication<Application>().dataStore.edit { preferences ->

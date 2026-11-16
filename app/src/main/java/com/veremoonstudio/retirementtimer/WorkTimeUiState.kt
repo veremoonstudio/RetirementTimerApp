@@ -69,8 +69,15 @@ data class SettingsData(
     val vacationEndEpoch: Long = -1L,
     val vacationPeriods: List<SavedVacationPeriod> = emptyList(),
     val holidays: List<SavedHoliday> = defaultSavedHolidays,
-    val selectedBackground: String = "None"
+    val selectedBackground: String = "None",
+    val holidaySortModeName: String = "BY_DATE"
 )
+
+enum class HolidaySortMode(val label: String) {
+    BY_DATE("By Date"),
+    BY_NAME("By Name"),
+    BY_ADDED("Last Added")
+}
 
 @Serializable
 data class SavedHoliday(
@@ -113,6 +120,7 @@ data class WorkTimeUiState(
     val vacationPeriods: List<VacationPeriod> = emptyList(),
     val holidays: List<Holiday> = defaultHolidays,
     val selectedBackground: String = "None",
+    val holidaySortMode: HolidaySortMode = HolidaySortMode.BY_DATE,
     val timeLeft: TimeLeftData = TimeLeftData("00", "00", "00", "00")
 )
 

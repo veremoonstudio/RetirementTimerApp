@@ -7,6 +7,11 @@ import com.google.android.ump.UserMessagingPlatform
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
@@ -32,6 +37,7 @@ import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragIndicator
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -413,19 +419,130 @@ fun SettingsScreen(
 
                 // Holidays
                 item {
-                    SettingsSectionTitle(stringResource(R.string.holidays_title))
                     var showAddHolidayDialog by remember { mutableStateOf(false) }
                     var holidayToEdit by remember { mutableStateOf<Holiday?>(null) }
+                    var isSortMenuExpanded by remember { mutableStateOf(false) }
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    val lazyListState = rememberLazyListState()
+                    var lastInteractionTime by remember { mutableLongStateOf(0L) }
+                    var isSortButtonVisible by remember { mutableStateOf(false) }
+
+                    LaunchedEffect(lazyListState.isScrollInProgress, isSortMenuExpanded) {
+                        if (lazyListState.isScrollInProgress || isSortMenuExpanded) {
+                            lastInteractionTime = SystemClock.elapsedRealtime()
+                            isSortButtonVisible = true
+                        }
+                    }
+
+                    LaunchedEffect(isSortButtonVisible) {
+                        if (isSortButtonVisible) {
+                            while (isActive) {
+                                val now = SystemClock.elapsedRealtime()
+                                if (!lazyListState.isScrollInProgress && !isSortMenuExpanded && (now - lastInteractionTime) >= 2500L) {
+                                    isSortButtonVisible = false
+                                    break
+                                }
+                                delay(200)
+                            }
+                        }
+                    }
+
+                    val sortButtonAlpha by animateFloatAsState(
+                        targetValue = if (isSortButtonVisible || isSortMenuExpanded) 1f else 0f,
+                        animationSpec = tween(durationMillis = 500),
+                        label = "SortButtonAlpha"
+                    )
+
+                    val sortedHolidays = remember(uiState.holidaySortMode, uiState.holidays) {
+                        when (uiState.holidaySortMode) {
+                            HolidaySortMode.BY_DATE -> uiState.holidays.sortedWith(compareBy({ it.month }, { it.day }))
+                            HolidaySortMode.BY_NAME -> uiState.holidays.sortedBy { it.name }
+                            HolidaySortMode.BY_ADDED -> uiState.holidays
+                        }
+                    }
 
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 2.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                            .padding(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Variant 3 Gold Pill Button for Adding New Holiday
+                        // Header Row with Title and Fading Dropdown Sort Button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SettingsSectionTitle(stringResource(R.string.holidays_title))
+
+                            Box(modifier = Modifier.graphicsLayer { alpha = sortButtonAlpha }) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable(enabled = sortButtonAlpha > 0.1f) {
+                                            lastInteractionTime = SystemClock.elapsedRealtime()
+                                            isSortButtonVisible = true
+                                            isSortMenuExpanded = true
+                                        }
+                                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Sort,
+                                        contentDescription = "Sort Options",
+                                        tint = RetirementColors.Gold,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = uiState.holidaySortMode.label,
+                                        style = TextStyle(
+                                            fontFamily = PlayfairDisplay,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = RetirementColors.Gold
+                                        )
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        tint = RetirementColors.Gold,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+
+                                DropdownMenu(
+                                    expanded = isSortMenuExpanded,
+                                    onDismissRequest = { isSortMenuExpanded = false },
+                                    modifier = Modifier
+                                        .background(Color(0xFF212121))
+                                        .border(1.dp, RetirementColors.Gold.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                ) {
+                                    HolidaySortMode.entries.forEach { mode ->
+                                        val isSelected = uiState.holidaySortMode == mode
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = mode.label,
+                                                    style = TextStyle(
+                                                        fontFamily = PlayfairDisplay,
+                                                        fontSize = 14.sp,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                        color = if (isSelected) RetirementColors.Gold else RetirementColors.Cream
+                                                    )
+                                                )
+                                            },
+                                            onClick = {
+                                                viewModel.updateHolidaySortMode(mode)
+                                                isSortMenuExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Button for Adding New Holiday
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -476,144 +593,46 @@ fun SettingsScreen(
                             }
                         }
 
-                        var activeReorderHoliday by remember { mutableStateOf<Holiday?>(null) }
-                        var lastArrowClickTime by remember { mutableLongStateOf(0L) }
-                        var localHolidays by remember(uiState.holidays) { mutableStateOf(uiState.holidays) }
-                        val lazyListState = rememberLazyListState()
-                        val coroutineScope = rememberCoroutineScope()
-                        val density = LocalDensity.current
-                        val itemHeightPx = with(density) { 44.dp.toPx() }
-
                         LazyColumn(
                             state = lazyListState,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(230.dp)
-                                .nestedScroll(blockParentScrollConnection)
-                                .clickable(
-                                    enabled = activeReorderHoliday != null,
-                                    onClick = { activeReorderHoliday = null }
-                                ),
+                                .nestedScroll(blockParentScrollConnection),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            itemsIndexed(
-                                items = localHolidays,
-                                key = { _, holiday -> "${holiday.name}_${holiday.month}_${holiday.day}" }
-                            ) { index, holiday ->
-                                val isReorderingThis = activeReorderHoliday == holiday
-
+                            items(
+                                items = sortedHolidays,
+                                key = { holiday -> "${holiday.name}_${holiday.month}_${holiday.day}" }
+                            ) { holiday ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(
-                                            if (isReorderingThis) Color.White.copy(alpha = 0.08f)
-                                            else Color.Transparent
-                                        )
+                                        .background(Color.Transparent)
                                         .padding(horizontal = 8.dp, vertical = 3.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Row(
-                                        modifier = Modifier.weight(1f),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        if (isReorderingThis) {
-                                            Column(
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                modifier = Modifier.padding(end = 6.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.ArrowDropUp,
-                                                    contentDescription = "Move Up",
-                                                    tint = if (index > 0) RetirementColors.Gold else RetirementColors.Gold.copy(alpha = 0.3f),
-                                                    modifier = Modifier
-                                                        .size(18.dp)
-                                                        .clickable(enabled = index > 0) {
-                                                            val now = SystemClock.elapsedRealtime()
-                                                            if (now - lastArrowClickTime < 350L) return@clickable
-                                                            lastArrowClickTime = now
-                                                            if (index > 0) {
-                                                                val targetIndex = index - 1
-                                                                val mutable = localHolidays.toMutableList()
-                                                                val item = mutable.removeAt(index)
-                                                                mutable.add(targetIndex, item)
-                                                                localHolidays = mutable
-                                                                activeReorderHoliday = holiday
-                                                                viewModel.updateHolidays(mutable)
-                                                                coroutineScope.launch {
-                                                                    val firstVisible = lazyListState.firstVisibleItemIndex
-                                                                    if (targetIndex <= firstVisible + 1) {
-                                                                        lazyListState.animateScrollToItem(targetIndex)
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                )
-                                                Icon(
-                                                    imageVector = Icons.Default.ArrowDropDown,
-                                                    contentDescription = "Move Down",
-                                                    tint = if (index < localHolidays.lastIndex) RetirementColors.Gold else RetirementColors.Gold.copy(alpha = 0.3f),
-                                                    modifier = Modifier
-                                                        .size(18.dp)
-                                                        .clickable(enabled = index < localHolidays.lastIndex) {
-                                                            val now = SystemClock.elapsedRealtime()
-                                                            if (now - lastArrowClickTime < 350L) return@clickable
-                                                            lastArrowClickTime = now
-                                                            if (index < localHolidays.lastIndex) {
-                                                                val targetIndex = index + 1
-                                                                val mutable = localHolidays.toMutableList()
-                                                                val item = mutable.removeAt(index)
-                                                                mutable.add(targetIndex, item)
-                                                                localHolidays = mutable
-                                                                activeReorderHoliday = holiday
-                                                                viewModel.updateHolidays(mutable)
-                                                                coroutineScope.launch {
-                                                                    val visibleItems = lazyListState.layoutInfo.visibleItemsInfo
-                                                                    val lastVisibleIndex = visibleItems.lastOrNull()?.index ?: localHolidays.lastIndex
-                                                                    if (targetIndex >= lastVisibleIndex - 1) {
-                                                                        lazyListState.animateScrollToItem((targetIndex - 2).coerceAtLeast(0))
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                )
-                                            }
-                                        }
-
-                                        Text(
-                                            text = "${holiday.name} (${holiday.month}/${holiday.day})",
-                                            style = TextStyle(
-                                                fontFamily = PlayfairDisplay,
-                                                fontSize = 17.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = if (isReorderingThis) RetirementColors.Gold else RetirementColors.Cream
-                                            ),
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .combinedClickable(
-                                                    onClick = {
-                                                        if (activeReorderHoliday != null) {
-                                                            activeReorderHoliday = null
-                                                        } else {
-                                                            holidayToEdit = holiday
-                                                        }
-                                                    },
-                                                    onLongClick = {
-                                                        activeReorderHoliday = holiday
-                                                    }
-                                                )
-                                        )
-                                    }
+                                    Text(
+                                        text = "${holiday.name} (${holiday.month}/${holiday.day})",
+                                        style = TextStyle(
+                                            fontFamily = PlayfairDisplay,
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = RetirementColors.Cream
+                                        ),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { holidayToEdit = holiday }
+                                    )
 
                                     Checkbox(
                                         checked = holiday.isEnabled,
                                         onCheckedChange = { checked ->
-                                            activeReorderHoliday = null
-                                            val newList = localHolidays.map {
+                                            val newList = uiState.holidays.map {
                                                 if (it == holiday) it.copy(isEnabled = checked) else it
                                             }
-                                            localHolidays = newList
                                             viewModel.updateHolidays(newList)
                                         },
                                         colors = CheckboxDefaults.colors(

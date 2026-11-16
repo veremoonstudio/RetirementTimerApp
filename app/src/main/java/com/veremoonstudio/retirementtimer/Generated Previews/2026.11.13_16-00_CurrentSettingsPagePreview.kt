@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -154,16 +155,28 @@ fun CurrentSettingsPagePreviewContent(
             }
         }
 
-        // HOLIDAYS SECTION WITH ADJUSTED HEADER GAP
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                text = "HOLIDAYS",
-                style = TextStyle(fontFamily = PlayfairDisplay, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, letterSpacing = 2.sp, color = RetirementColors.Gold),
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
+        // HOLIDAYS SECTION WITH DROPDOWN SORT BUTTON
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "HOLIDAYS",
+                    style = TextStyle(fontFamily = PlayfairDisplay, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, letterSpacing = 2.sp, color = RetirementColors.Gold)
+                )
 
-            // GAP INCREASED TO 12.dp AS REQUESTED IN PREVIEW
-            Spacer(modifier = Modifier.height(holidaysHeaderGap.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).padding(horizontal = 6.dp, vertical = 4.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.Sort, contentDescription = "Sort Options", tint = RetirementColors.Gold, modifier = Modifier.size(16.dp))
+                    Text(text = "By Date", style = TextStyle(fontFamily = PlayfairDisplay, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = RetirementColors.Gold))
+                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, tint = RetirementColors.Gold, modifier = Modifier.size(16.dp))
+                }
+            }
 
             Box(
                 modifier = Modifier
@@ -180,11 +193,11 @@ fun CurrentSettingsPagePreviewContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 SampleHolidayRow("New Year's Day", "1/1", isChecked = true, isReordering = false)
-                SampleHolidayRow("Martin Luther King Jr. Day", "1/16", isChecked = false, isReordering = true)
+                SampleHolidayRow("Martin Luther King Jr. Day", "1/16", isChecked = false, isReordering = false)
                 SampleHolidayRow("Presidents' Day", "2/20", isChecked = false, isReordering = false)
             }
         }
